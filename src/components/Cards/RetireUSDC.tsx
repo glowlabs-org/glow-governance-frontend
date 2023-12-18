@@ -46,7 +46,9 @@ export function CommitUSDCCard() {
       <CardHeader>
         <CardTitle>Commit USDG</CardTitle>
         <CardDescription>
-          Enter the amount of USDG you want to commit.
+          Enter the amount of USDG you want to commit. Commiting USDG has no
+          financial benefit and is only used to increase your governance power
+          by increasing your nominations.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
