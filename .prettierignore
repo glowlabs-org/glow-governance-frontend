@@ -1,0 +1,11 @@
+# Ignore artifacts:
+build
+coverage
+
+
+*.json
+node_modules
+.vercel
+public
+.next
+.src/typechain-types
