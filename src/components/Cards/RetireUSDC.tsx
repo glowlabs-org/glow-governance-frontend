@@ -48,7 +48,9 @@ export function CommitUSDCCard() {
         <CardDescription>
           Enter the amount of USDG you want to commit. Commiting USDG has no
           financial benefit and is only used to increase your governance power
-          by increasing your nominations.
+          by increasing your nominations. Committing USDG or GCC to Glow is like
+          donating your money to climate change. You will get good karma, but
+          you will not get your tokens back.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

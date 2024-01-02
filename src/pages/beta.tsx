@@ -30,6 +30,7 @@ import BatchRetire from '@/components/BatchRetire'
 import { CommitUSDCCard } from '@/components/Cards/RetireUSDC'
 import { MintUSDCCard } from '@/components/Cards/MintUSDC'
 import { SwapUSDGCard } from '@/components/Cards/SwapUSDG'
+import { PayProtocolFee } from '@/components/Cards/PayProtocolFee'
 
 export default function Home() {
   const { openConnectModal } = useConnectModal()
@@ -90,10 +91,11 @@ export default function Home() {
       </div> */}
           <div className="py-4  gap-y-4  gap-x-2 grid  grid-cols-1 lg:grid-cols-2 items-center  border-b-white border-b mb-12">
             {/* <MintGCCCard /> */}
-            <RetireGCCCard />
+
             {/* <MintUSDCCard /> */}
             {/* <CommitUSDCCard /> */}
             <SwapUSDGCard />
+            <PayProtocolFee />
           </div>
           <div className="py-4 border-b-white border-b mb-12">
             <h2 className="text-7xl mb-4  font-bold">
@@ -142,14 +144,13 @@ export default function Home() {
             </Table>
 
             <div className="mt-12"></div>
-    
+            <h2 className="text-7xl mb-4  font-bold">Proposals</h2>
+            <ProposalsTable />
 
             <div className="mt-12"></div>
             <h2 className="text-7xl mb-4  font-bold">Batch Retire</h2>
             <BatchRetire />
           </div> */}
-          {/* <h2 className="text-7xl mb-4  font-bold">Proposals</h2>
-          <ProposalsTable /> */}
         </>
       ) : (
         <Button onClick={connect}>Connect Wallet</Button>
