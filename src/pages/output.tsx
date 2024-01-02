@@ -116,7 +116,7 @@ function OutputTable({ data }: { data: GCAServerResponse }) {
           <TableRow>
             <TableHead className="w-[100px]">Farm ID</TableHead>
             <TableHead>Power Output</TableHead>
-            <TableHead>Impact Points</TableHead>
+            <TableHead>Impact Rates</TableHead>
             <TableHead className="text-right">Total Credits</TableHead>
           </TableRow>
         </TableHeader>
