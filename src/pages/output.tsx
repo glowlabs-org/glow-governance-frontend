@@ -107,7 +107,31 @@ ChartJS.register(
   Legend
 )
 
+// function getP
 function OutputTable({ data }: { data: GCAServerResponse }) {
+  const [dataSortedByCredits, setDataSortedByCredits] =
+    useState<GCAServerResponse>(data)
+  React.useEffect(() => {
+    const dataSortedByCredits = { ...data }
+    dataSortedByCredits.Devices.sort((a, b) => {
+      let aTotalCredits = 0
+      let bTotalCredits = 0
+      for (let i = 0; i < a.ImpactRates.length; ++i) {
+        const impactPoints = a.ImpactRates[i]
+        const powerOutput = a.PowerOutputs[i]
+        if (SENTINEL_VALUES.includes(powerOutput)) continue
+        aTotalCredits += (impactPoints * powerOutput) / 10 ** 15
+      }
+      for (let i = 0; i < b.ImpactRates.length; ++i) {
+        const impactPoints = b.ImpactRates[i]
+        const powerOutput = b.PowerOutputs[i]
+        if (SENTINEL_VALUES.includes(powerOutput)) continue
+        bTotalCredits += (impactPoints * powerOutput) / 10 ** 15
+      }
+      return bTotalCredits - aTotalCredits
+    })
+    setDataSortedByCredits(dataSortedByCredits)
+  }, [data])
   return (
     <>
       <Table className="bg-white rounded-lg mt-8">
@@ -115,13 +139,13 @@ function OutputTable({ data }: { data: GCAServerResponse }) {
         <TableHeader>
           <TableRow>
             <TableHead className="w-[100px]">Farm ID</TableHead>
-            <TableHead>Power Output</TableHead>
+            <TableHead>Power Output (Kilowatt Hours)</TableHead>
             <TableHead>Impact Rates</TableHead>
             <TableHead className="text-right">Total Credits</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.Devices.map((device) => {
+          {dataSortedByCredits.Devices.map((device) => {
             const pubKey = farmPubKeyToId(device.PublicKey)
             let totalImpactPoints = 0
             let totalPowerOutputs = 0
@@ -139,7 +163,7 @@ function OutputTable({ data }: { data: GCAServerResponse }) {
               <>
                 <TableRow>
                   <TableCell className="font-medium">{pubKey}</TableCell>
-                  <TableCell>{totalPowerOutputs}</TableCell>
+                  <TableCell>{totalPowerOutputs / 1e6}</TableCell>
                   <TableCell>{totalImpactPoints}</TableCell>
                   <TableCell className="text-right">
                     {totalCredits.toFixed(4)}
