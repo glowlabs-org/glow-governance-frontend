@@ -86,10 +86,15 @@ const Early = () => {
         <div className="bg-white rounded-lg py-4 w-full px-4 flex flex-col gap-y-3">
           <section className="">
             Total USDG Raised From Bonding Curve: $
-            {totalRaised?.toLocaleString()}
+            {totalRaised
+              ? totalRaised.toLocaleString()
+              : 'You must have a web3 wallet installed on your browser'}
           </section>
           <section>
-            Total USDG Supply: {totalUSDGSupply?.toLocaleString()}
+            Total USDG Supply:{' '}
+            {totalUSDGSupply
+              ? totalUSDGSupply.toLocaleString()
+              : 'You must have a web3 wallet installed on your browser'}
           </section>
         </div>
         <div></div>

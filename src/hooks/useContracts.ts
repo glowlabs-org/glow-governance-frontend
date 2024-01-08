@@ -15,6 +15,8 @@ import {
   USDG__factory,
   EarlyLiquidity,
   EarlyLiquidity__factory,
+  VetoCouncil,
+  VetoCouncil__factory,
 } from '@/typechain-types'
 import { useEthersSigner } from './useEthersSigner'
 import { addresses } from '@/constants/addresses'
@@ -26,6 +28,7 @@ export const useContracts = () => {
   const [minerPoolAndGCA, setPoolAndGCA] = useState<MinerPoolAndGCA>()
   const [batchRetire, setBatchRetire] = useState<BatchCommit>()
   const [governance, setGovernance] = useState<Governance>()
+  const [vetoCouncilContract, setVetoCouncilContract] = useState<VetoCouncil>()
   const [usdg, setUSDG] = useState<USDG>()
   const [earlyLiquidity, setEarlyLiquidity] = useState<EarlyLiquidity>()
   const [genesisTimestamp, setGenesisTimestamp] = useState<number>(0)
@@ -57,6 +60,10 @@ export const useContracts = () => {
       addresses.batchCommit,
       signer
     )
+    const _vetoCouncilContract = VetoCouncil__factory.connect(
+      addresses.vetoCouncilContract,
+      signer
+    )
     const _usdg = USDG__factory.connect(addresses.usdg, signer)
     setGCC(_gcc)
     setGlow(_glow)
@@ -65,6 +72,7 @@ export const useContracts = () => {
     setEarlyLiquidity(_earlyLiquidity)
     setPoolAndGCA(_poolAndGCA)
     setUSDC(_usdc)
+    setVetoCouncilContract(_vetoCouncilContract)
     setUSDG(_usdg)
   }, [signer])
 
@@ -87,5 +95,6 @@ export const useContracts = () => {
     minerPoolAndGCA,
     earlyLiquidity,
     usdg,
+    vetoCouncilContract,
   }
 }

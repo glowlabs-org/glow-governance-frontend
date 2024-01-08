@@ -8,6 +8,7 @@ import { Loader2 } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { ethers } from 'ethers'
 import { Textarea } from '@/components/ui/textarea'
+import { API_URL } from '@/constants/api-url'
 
 export const GrantsProposalSpecificComponent = () => {
   const [addressToGrant, setAddressToGrant] = useState('')
@@ -29,6 +30,26 @@ export const GrantsProposalSpecificComponent = () => {
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
   }
+
+  const handleSaveInDB = async () => {
+    const descriptionHash = keccak256(ethers.utils.toUtf8Bytes(description))
+    console.log({ descriptionHash, description })
+    const apiPostParams = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        hash: descriptionHash,
+        text: description,
+      }),
+    }
+    const res = await fetch(API_URL + '/hash/insert', apiPostParams)
+    const data = await res.json()
+    console.log(data)
+    //
+  }
+
   const executeFunction = async () => {
     if (!governance) return
     const nominationCost = await governance.costForNewProposal()
@@ -36,7 +57,8 @@ export const GrantsProposalSpecificComponent = () => {
     try {
       const descriptionHash = keccak256(ethers.utils.toUtf8Bytes(description))
       const amount = ethers.utils.parseEther(amountToGrant.toString())
-      handleSaveToFile(description, descriptionHash)
+      await handleSaveInDB()
+      // alert('here!')
       const tx = await governance.createGrantsProposal(
         addressToGrant,
         amount,

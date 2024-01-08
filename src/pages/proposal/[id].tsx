@@ -15,19 +15,29 @@ import {
   IsMostPopoularProposalResponse,
   isMostPopularProposal,
 } from '@/subgraph/queries/isMostPopularProposal'
+import { API_URL } from '@/constants/api-url'
 
 export const getServerSideProps = (async (context) => {
   const id = context.query.id as string
   const proposalInfo = await findProposalInfo(id)
   const isMostPopularProposalInfo = await isMostPopularProposal(id)
   const fullInfo = { ...proposalInfo, ...isMostPopularProposalInfo }
-  return { props: { proposalInfo: fullInfo } }
+  let hashText: string = ''
+  if (proposalInfo.proposalType == ProposalType.Grants) {
+    const urlToQuery = `${API_URL}/hash?hash=${proposalInfo.hash}`
+    const response = await fetch(urlToQuery)
+    const data = (await response.json()) as { text: string; hash: string }
+    hashText = data.text
+  }
+  return { props: { proposalInfo: fullInfo, hashText: hashText } }
 }) satisfies GetServerSideProps<{
   proposalInfo: GenericProposal & IsMostPopoularProposalResponse
+  hashText: string
 }>
 
 const Id = ({
   proposalInfo,
+  hashText,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   // const {id} = useParams();
   // const {proposalType} = useParams();
@@ -49,7 +59,7 @@ const Id = ({
   }
 
   if (proposalInfo.proposalType == ProposalType.Grants) {
-    return <GrantsView {...proposalInfo} />
+    return <GrantsView data={proposalInfo} hashText={hashText} />
   }
 
   return <div>{JSON.stringify(proposalInfo)}</div>

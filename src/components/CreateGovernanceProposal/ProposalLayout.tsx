@@ -45,6 +45,7 @@ export const SingularProposal = ({
         isVetoCouncilElectionOrSlash &&
           isRFCExpanded &&
           'sm:col-span-1 md:col-span-1 lg:col-span-2'
+
         // isChangeGCARequirements && isRFCExpanded &&
         // 'sm:col-span-1 md:col-span-1 lg:col-span-2',
       )}

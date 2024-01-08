@@ -10,9 +10,6 @@ const Divider = () => {
 export const GCARequirements = (
   data: ChangeGCARequirementsQueryResponse & IsMostPopoularProposalResponse
 ) => {
-  const imgAddr =
-    'https://i.seadn.io/s/raw/files/69adc8c4003830d4ad21c9191ab2a0ce.png?auto=format&dpr=1&w=1000'
-
   return (
     <ProposalViewBase data={data} proposalTypeTitle="GCA Requirements">
       <p>GCA Requirement: {data.hash}</p>

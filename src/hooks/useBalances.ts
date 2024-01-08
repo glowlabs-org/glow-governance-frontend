@@ -1,9 +1,11 @@
-import React, { useEffect } from 'react'
+import React, { createContext, useEffect } from 'react'
 import { useContracts } from '@/hooks/useContracts'
 import { useState } from 'react'
 import { useAccount } from 'wagmi'
 import { ethers } from 'ethers'
-export const useBalances = () => {
+import { BalancesContext } from '@/contexts/BalanceProvider'
+
+export const useBalancesCore = () => {
   const { address } = useAccount()
   const { glow, gcc, governance, usdg, usdc } = useContracts()
   const [glowBalance, setGlowBalance] = useState<string>('')
@@ -44,4 +46,8 @@ export const useBalances = () => {
     usdcBalance,
     nominationBalance,
   }
+}
+
+export const useBalances = () => {
+  return React.useContext(BalancesContext)
 }

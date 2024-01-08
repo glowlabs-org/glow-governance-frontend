@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Button } from '../ui/button'
 import { GenericProposal, Proposal } from '@/subgraph/queries/getProposal'
 import { getAddressURL, getTxHashURL } from '@/constants/urls'
@@ -20,7 +20,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { useContracts } from '@/hooks/useContracts'
 import { IsMostPopoularProposalResponse } from '@/subgraph/queries/isMostPopularProposal'
-
+import { useAccount } from 'wagmi'
 type SpendNominationsDialogButtonProps = {
   data: GenericProposal & IsMostPopoularProposalResponse
   className?: string
@@ -29,11 +29,39 @@ type SpendNominationsDialogButtonProps = {
 type VetoProposalButtonProps = {
   data: GenericProposal & IsMostPopoularProposalResponse
   className?: string
+  showVetoButtonToCouncil?: boolean
 }
 
 function between(x: number, min: number, max: number) {
   return x >= min && x <= max
 }
+
+const weekStatus = ({
+  genesis,
+  weekOfMostPopularProposal,
+}: {
+  genesis: number
+  weekOfMostPopularProposal: number
+}) => {
+  const currentTimestamp = Math.floor(Date.now() / 1000)
+  //Week is in progress if the current timestamp is between
+  //genesisTimestamp  + (weekOfMostPopularProposal) * 604800
+  // and genesisTimestamp  + (weekOfMostPopularProposal + 1) * 604800
+  const weekStart = genesis + weekOfMostPopularProposal * SECONDS_IN_A_WEEK
+  const weekEnd = genesis + (weekOfMostPopularProposal + 1) * SECONDS_IN_A_WEEK
+  const proposalVetoPeriodEnd = weekStart + SECONDS_IN_A_WEEK * 4
+
+  if (between(currentTimestamp, weekStart, weekEnd)) {
+    return 'in-progress'
+  }
+  if (between(currentTimestamp, weekEnd, proposalVetoPeriodEnd)) {
+    return 'veto-open'
+  }
+  if (currentTimestamp > proposalVetoPeriodEnd) {
+    return 'ended'
+  }
+}
+
 const SECONDS_IN_A_WEEK = 604800
 const VetoProposalButton = (props: VetoProposalButtonProps) => {
   const [vetoCouncilLoading, setVetoCouncilLoading] = React.useState(false)
@@ -41,30 +69,13 @@ const VetoProposalButton = (props: VetoProposalButtonProps) => {
   const weekOfMostPopularProposal = parseInt(
     props.data.mostPopularProposals[0].id
   )
-  const weekStatus = () => {
-    const currentTimestamp = Math.floor(Date.now() / 1000)
-    //Week is in progress if the current timestamp is between
-    //genesisTimestamp  + (weekOfMostPopularProposal) * 604800
-    // and genesisTimestamp  + (weekOfMostPopularProposal + 1) * 604800
-    const weekStart =
-      genesisTimestamp + weekOfMostPopularProposal * SECONDS_IN_A_WEEK
-    const weekEnd =
-      genesisTimestamp + (weekOfMostPopularProposal + 1) * SECONDS_IN_A_WEEK
-    const proposalVetoPeriodEnd = weekStart + SECONDS_IN_A_WEEK * 2
-
-    if (between(currentTimestamp, weekStart, weekEnd)) {
-      return 'in-progress'
-    }
-    if (between(currentTimestamp, weekEnd, proposalVetoPeriodEnd)) {
-      return 'veto-open'
-    }
-    if (currentTimestamp > proposalVetoPeriodEnd) {
-      return 'ended'
-    }
-  }
 
   const vetoProposal = async () => {
-    if (weekStatus() !== 'veto-open') return
+    if (
+      weekStatus({ genesis: genesisTimestamp, weekOfMostPopularProposal }) !==
+      'veto-open'
+    )
+      return
     if (vetoCouncilLoading) return
     if (!governance) return
     if (!props.data.isMostPopularProposal) return
@@ -81,13 +92,31 @@ const VetoProposalButton = (props: VetoProposalButtonProps) => {
       setVetoCouncilLoading(false)
     }
   }
+  const { address } = useAccount()
+  const { vetoCouncilContract } = useContracts()
+  const [isVetoCouncilMember, setIsVetoCouncilMember] = React.useState(false)
+  async function fetchIsVetoCouncilMember() {
+    if (!address) return
+    if (!vetoCouncilContract) return
+    const isVetoCouncilMember =
+      await vetoCouncilContract.isCouncilMember(address)
+    setIsVetoCouncilMember(isVetoCouncilMember)
+  }
+
+  useEffect(() => {
+    fetchIsVetoCouncilMember()
+  }, [address])
+
   const getButtonText = () => {
-    const status = weekStatus()
+    const status = weekStatus({
+      genesis: genesisTimestamp,
+      weekOfMostPopularProposal: weekOfMostPopularProposal,
+    })
     if (status === 'in-progress') {
       return 'Veto Period Not Open'
     }
     if (status === 'veto-open') {
-      return 'Veto This Proposal (Only For Veto Council Members)'
+      return 'Veto This Proposal'
     }
     if (status === 'ended') {
       return 'Veto Period Ended'
@@ -95,7 +124,7 @@ const VetoProposalButton = (props: VetoProposalButtonProps) => {
   }
   return (
     <div className={props.className}>
-      {props.data.isMostPopularProposal && (
+      {isVetoCouncilMember && props.data.isMostPopularProposal && (
         <Button
           onClick={() => {
             vetoProposal()
@@ -216,24 +245,28 @@ type ProposalViewBaseProps = {
   data: GenericProposal & IsMostPopoularProposalResponse
   children?: React.ReactNode
   proposalTypeTitle: string
+  showVetoButtonToCouncil?: boolean
 }
 
 export const ProposalViewBase = ({
   data,
   children,
   proposalTypeTitle,
+  showVetoButtonToCouncil,
 }: ProposalViewBaseProps) => {
   const { genesisTimestamp } = useContracts()
+  const statusOfWeek = weekStatus({
+    genesis: genesisTimestamp,
+    weekOfMostPopularProposal: parseInt(data.mostPopularProposals[0].id),
+  })
 
-  const imgAddr =
-    'https://i.seadn.io/s/raw/files/69adc8c4003830d4ad21c9191ab2a0ce.png?auto=format&dpr=1&w=1000'
   return (
     <div className="mx-[10vw] max-w-[1600px] mt-12">
       <div className="lg:grid lg:grid-cols-2 items-center justify-center">
         <div>
           <img
             className="  max-w-xl rounded-lg "
-            src={imgAddr}
+            src={'../../globe.png'}
             alt="GCA Requirements"
           />
         </div>
@@ -263,7 +296,13 @@ export const ProposalViewBase = ({
             </p>
             <Divider />
 
-            <p>Nominations Used: {data.nominationsUsed.nominationsUsed}</p>
+            <p>
+              Nominations Used:{' '}
+              {ethers.utils.formatUnits(
+                data.nominationsUsed.nominationsUsed,
+                12
+              )}
+            </p>
             <Divider />
 
             <p>
@@ -281,7 +320,21 @@ export const ProposalViewBase = ({
             {children}
           </div>
 
-          <SpendNominationsDialogButton data={data} className="mt-4" />
+          {!data.isMostPopularProposal &&
+            weekStatus({
+              genesis: genesisTimestamp,
+              weekOfMostPopularProposal: parseInt(
+                data.mostPopularProposals[0].id
+              ),
+            }) === 'in-progress' && (
+              <SpendNominationsDialogButton data={data} className="mt-4" />
+            )}
+
+          {data.isMostPopularProposal && (
+            <Button className="mt-4">
+              Most Popular Proposal For Week {data.mostPopularProposals[0].id}
+            </Button>
+          )}
           {data.isMostPopularProposal && (
             <VetoProposalButton data={data} className="mt-4" />
           )}

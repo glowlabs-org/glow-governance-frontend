@@ -1,5 +1,5 @@
-const txHashPrefix = 'https://goerli.etherscan.io/tx/'
-const addressPrefix = 'https://goerli.etherscan.io/address/'
+const txHashPrefix = 'https://etherscan.io/tx/'
+const addressPrefix = 'https://etherscan.io/address/'
 
 export const getTxHashURL = (txHash: string) => {
   return txHashPrefix + txHash

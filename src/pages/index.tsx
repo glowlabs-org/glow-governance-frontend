@@ -30,6 +30,7 @@ import BatchRetire from '@/components/BatchRetire'
 import { CommitUSDCCard } from '@/components/Cards/RetireUSDC'
 import { MintUSDCCard } from '@/components/Cards/MintUSDC'
 import { SwapUSDGCard } from '@/components/Cards/SwapUSDG'
+import { useBalances } from '@/hooks/useBalances'
 
 export default function Home() {
   const { openConnectModal } = useConnectModal()
@@ -45,6 +46,11 @@ export default function Home() {
 
   const [amountToRetire, setAmountToRetire] = useState(0)
   const [gccBalance, setGCCBalance] = useState<string>('')
+  const { nominationBalance } = useBalances()
+  // const
+  const [proposalPrice, setProposalPrice] = useState<string>()
+
+  const { governance } = useContracts()
   const [retirements, setRetirements] =
     useState<FindRetirementsByAddressResponse>()
 
@@ -52,6 +58,11 @@ export default function Home() {
     if (!address) return
     const res = await findRetirementsByAddress(address)
     setRetirements(res)
+  }
+  const findProposalPrice = async () => {
+    if (!governance) return
+    const proposalPrice = await governance.costForNewProposal()
+    setProposalPrice(ethers.utils.formatUnits(proposalPrice, 12))
   }
 
   async function fetchGCCBalance() {
@@ -66,7 +77,8 @@ export default function Home() {
   }, [address])
   useEffect(() => {
     fetchGCCBalance()
-  }, [gcc])
+    findProposalPrice()
+  }, [gcc, governance])
   return (
     <main
       className={`flex min-h-screen flex-col container mx-auto p-24 ${inter.className}`}
@@ -99,6 +111,10 @@ export default function Home() {
             <h2 className="text-7xl mb-4  font-bold">
               Participate In Governance
             </h2>
+            <h3 className="text-xl">
+              Nominations Required to Create a Proposal: {proposalPrice}
+            </h3>
+            <h3>Your nominations: {nominationBalance}</h3>
             <CreateGovernanceProposal />
           </div>
 
@@ -148,8 +164,8 @@ export default function Home() {
             <h2 className="text-7xl mb-4  font-bold">Batch Retire</h2>
             <BatchRetire />
           </div> */}
-          {/* <h2 className="text-7xl mb-4  font-bold">Proposals</h2>
-          <ProposalsTable /> */}
+          <h2 className="text-7xl mb-4  font-bold">Proposals</h2>
+          <ProposalsTable />
         </>
       ) : (
         <Button onClick={connect}>Connect Wallet</Button>

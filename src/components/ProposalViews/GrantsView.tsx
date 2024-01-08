@@ -9,11 +9,12 @@ import { IsMostPopoularProposalResponse } from '@/subgraph/queries/isMostPopular
 const Divider = () => {
   return <div className="border-t-[1px] border-gray-300 my-2" />
 }
-export const GrantsView = (
+
+type GrantsViewProps = {
   data: GrantsQueryResponse & IsMostPopoularProposalResponse
-) => {
-  const imgAddr =
-    'https://i.seadn.io/s/raw/files/69adc8c4003830d4ad21c9191ab2a0ce.png?auto=format&dpr=1&w=1000'
+  hashText: string
+}
+export const GrantsView = ({ data, hashText }: GrantsViewProps) => {
   return (
     <ProposalViewBase data={data} proposalTypeTitle="Grants">
       <p>Description Hash: {data.hash}</p>
@@ -32,6 +33,10 @@ export const GrantsView = (
         </a>
       </p>
       <Divider />
+      <p>
+        <br>Description:</br>
+        {hashText}
+      </p>
     </ProposalViewBase>
   )
 }
