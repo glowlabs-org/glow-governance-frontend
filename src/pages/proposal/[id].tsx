@@ -39,9 +39,6 @@ const Id = ({
   proposalInfo,
   hashText,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
-  // const {id} = useParams();
-  // const {proposalType} = useParams();
-
   if (proposalInfo.proposalType == ProposalType.GCAElectionOrSlash) {
     return <GCAElectionOrSlashView {...proposalInfo} />
   }

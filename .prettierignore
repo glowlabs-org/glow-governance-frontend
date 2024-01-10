@@ -8,4 +8,5 @@ node_modules
 .vercel
 public
 .next
-.src/typechain-types
+src/typechain-types
+src/subgraph/queries/findMostPopularProposalIds.ts

@@ -10,8 +10,10 @@ import { useContracts } from '@/hooks/useContracts'
 import { BigNumber, BigNumberish, ethers } from 'ethers'
 import { findRetirementsByAddress } from '@/subgraph/queries'
 import { addresses } from '@/constants/addresses'
-import { ProposalsTable } from '@/components/Tables/Proposals'
+import { ProposalDashResponse } from '@/subgraph/queries/proposals'
+import { ProposalsTable, StatusLegend } from '@/components/Tables/Proposals'
 import { Button } from '@/components/ui/button'
+import { GetStaticProps, InferGetStaticPropsType } from 'next'
 import { Input } from '@/components/ui/input'
 import {
   Table,
@@ -31,8 +33,12 @@ import { CommitUSDCCard } from '@/components/Cards/RetireUSDC'
 import { MintUSDCCard } from '@/components/Cards/MintUSDC'
 import { SwapUSDGCard } from '@/components/Cards/SwapUSDG'
 import { useBalances } from '@/hooks/useBalances'
+import { GetStaticPropsContext } from 'next'
+import { findProposalsDash } from '@/subgraph/queries/proposals'
 
-export default function Home() {
+export default function Home({
+  proposalDashInfo,
+}: InferGetStaticPropsType<typeof getStaticProps>) {
   const { openConnectModal } = useConnectModal()
   const { address } = useAccount()
   const { gcc, glow } = useContracts()
@@ -165,7 +171,10 @@ export default function Home() {
             <BatchRetire />
           </div> */}
           <h2 className="text-7xl mb-4  font-bold">Proposals</h2>
-          <ProposalsTable />
+          <div className="mb-4">
+            <StatusLegend />
+          </div>
+          <ProposalsTable proposalDashInfo={proposalDashInfo} />
         </>
       ) : (
         <Button onClick={connect}>Connect Wallet</Button>
@@ -173,3 +182,16 @@ export default function Home() {
     </main>
   )
 }
+
+//Get static props
+export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
+  const res = await findProposalsDash()
+  return {
+    props: {
+      proposalDashInfo: res,
+    },
+    revalidate: 30,
+  }
+}) satisfies GetStaticProps<{
+  proposalDashInfo: ProposalDashResponse
+}>

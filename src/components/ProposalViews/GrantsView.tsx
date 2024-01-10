@@ -16,27 +16,29 @@ type GrantsViewProps = {
 }
 export const GrantsView = ({ data, hashText }: GrantsViewProps) => {
   return (
-    <ProposalViewBase data={data} proposalTypeTitle="Grants">
-      <p>Description Hash: {data.hash}</p>
-      <Divider />
-      <p>Amount: {ethers.utils.formatEther(data.amount)} ETH</p>
-      <Divider />
-      <p>
-        Recipient:
-        <a
-          className="text-blue-500 hover:text-blue-600"
-          href={getAddressURL(data.recipient.id)}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {data.recipient.id}
-        </a>
-      </p>
-      <Divider />
-      <p>
-        <br>Description:</br>
-        {hashText}
-      </p>
-    </ProposalViewBase>
+    <>
+      <ProposalViewBase data={data} proposalTypeTitle="Grants">
+        <p>Description Hash: {data.hash}</p>
+        <Divider />
+        <p>Amount: {ethers.utils.formatEther(data.amount)} GLOW</p>
+        <Divider />
+        <p>
+          Recipient:
+          <a
+            className="text-blue-500 hover:text-blue-600"
+            href={getAddressURL(data.recipient.id)}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {data.recipient.id}
+          </a>
+        </p>
+        <Divider />
+        <p>
+          <p>Description:</p>
+          {hashText}
+        </p>
+      </ProposalViewBase>
+    </>
   )
 }
