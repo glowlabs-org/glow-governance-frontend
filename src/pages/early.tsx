@@ -1,82 +1,79 @@
 import React, { useEffect } from 'react'
 import { useContracts } from '@/hooks/useContracts'
 import { formatEther, formatUnits, parseUnits } from 'ethers/lib/utils'
-import { BigNumber } from 'ethers'
+import { BigNumber, ethers } from 'ethers'
+import {
+  DonationsSubgraphResponse,
+  findDonationsFromAddress,
+} from '@/subgraph/queries/findDonationsFromAddress'
+import { useQueries } from '@tanstack/react-query'
+import { Input } from '@/components/ui/input'
+import { GetStaticProps, InferGetStaticPropsType } from 'next'
+import { isAddress } from 'viem'
+import { Loader2 } from 'lucide-react'
+import {
+  EarlyLiquidity__factory,
+  USDG__factory,
+  MinerPoolAndGCA__factory,
+} from '@/typechain-types'
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { GetStaticPropsContext } from 'next'
+import { addresses } from '@/constants/addresses'
+async function fetchDonations(
+  address: string
+): Promise<DonationsSubgraphResponse | null> {
+  if (!isAddress(address)) return null
+  const res = await findDonationsFromAddress(address)
+  //Order by block timestamp descending
+  res.donations.sort((a, b) => {
+    return parseInt(b.blockTimestamp) - parseInt(a.blockTimestamp)
+  })
+  return res
+}
 
-const Early = () => {
-  const { earlyLiquidity, usdg } = useContracts()
-  const [totalSold, setTotalSold] = React.useState<number>()
-  const [totalRaised, setTotalRaised] = React.useState<number>()
-  const [totalUSDGSupply, setTotalUSDGSupply] = React.useState<number>()
+function computeGeometricSeries(
+  firstTerm: number,
+  commonRatio: number,
+  numberOfTerms: number
+): number {
+  // Check if the common ratio is 1, as it requires a different formula
+  if (commonRatio === 1) {
+    return firstTerm * numberOfTerms
+  }
 
-  useEffect(() => {
-    const getTotalSold = async () => {
-      if (!earlyLiquidity) return
-      if (!usdg) return
-      const totalSold = await earlyLiquidity.totalSold()
-      const totalSoldString = totalSold.toString()
-      const totalSoldNumber = parseFloat(formatEther(totalSoldString))
-      const totalUSDGSupply = await usdg.totalSupply()
-      const totalUSDGSupplyString = totalUSDGSupply.toString()
-      const totalUSDGSupplyNumber = parseFloat(
-        formatUnits(totalUSDGSupplyString, 6)
-      )
-      setTotalUSDGSupply(totalUSDGSupplyNumber)
-      setTotalSold(totalSoldNumber)
-      // Example usage
-      let firstTerm = 0.3 // First term of the series
-      let commonRatio = 1.0000006931474208 // Common ratio
-      const seriesSum = computeGeometricSeries(
-        firstTerm,
-        commonRatio,
-        totalSoldNumber
-      )
-      setTotalRaised(seriesSum)
+  // Use the geometric series formula
+  let sum =
+    (firstTerm * (1 - Math.pow(commonRatio, numberOfTerms))) / (1 - commonRatio)
+  return sum
+}
 
-      /**
-       * @dev Events were put here to double check if the javascript impl matched the solidity one
-       * @dev The results are that they are EXTREMELY close. The javascript impl is off by less than .0001%
-       */
-      //   const events = await earlyLiquidity.queryFilter("Purchase",
-      //   18809233,"latest")
-      //   const filter = earlyLiquidity.filters.Purchase()
-      //   const events = await earlyLiquidity.queryFilter(
-      //     filter,
-      //     18809233,
-      //     'latest'
-      //   )
-      //   console.log(events)
-      //   let bn: BigNumber = BigNumber.from(0)
-      //   for (const event of events) {
-      //     bn = bn.add(event.args.totalUSDCSpent)
-      //   }
-      //   let bnStr = bn.toString()
-      //   let humanReadableUSDC = formatUnits(bnStr, 6)
-      //   console.log({ humanReadableUSDC })
-    }
-    getTotalSold()
-  }, [earlyLiquidity])
+const Early = ({
+  totalRaised,
+  totalUSDGSupply,
+}: InferGetStaticPropsType<typeof getStaticProps>) => {
+  const [userAddress, setUserAddress] = React.useState<string>()
+
+  const [donationsQuery] = useQueries({
+    queries: [
+      {
+        queryKey: ['donations', userAddress],
+        queryFn: () => fetchDonations(userAddress!),
+        enabled: isAddress(userAddress!),
+      },
+    ],
+  })
 
   function formula(terms: number) {
     //Copilot off
     return 0.3 * 2 ** (terms / 1_000_000)
-  }
-
-  function computeGeometricSeries(
-    firstTerm: number,
-    commonRatio: number,
-    numberOfTerms: number
-  ): number {
-    // Check if the common ratio is 1, as it requires a different formula
-    if (commonRatio === 1) {
-      return firstTerm * numberOfTerms
-    }
-
-    // Use the geometric series formula
-    let sum =
-      (firstTerm * (1 - Math.pow(commonRatio, numberOfTerms))) /
-      (1 - commonRatio)
-    return sum
   }
 
   return (
@@ -99,8 +96,95 @@ const Early = () => {
         </div>
         <div></div>
       </div>
+      <div className="mt-12">
+        <h2 className="text-4xl font-bold">Check Your Payments</h2>
+        <Input
+          className="mt-4 mb-4"
+          placeholder="Enter your ethereum address"
+          onChange={(e) => setUserAddress(e.target.value)}
+        />
+        {donationsQuery.data
+          ? `You have donated ${donationsQuery.data.donations.length} times`
+          : 'Enter an ethereum address to check your donations'}
+      </div>
+      {/* {} */}
+      <Table className="bg-white rounded-lg ">
+        <TableCaption>Protocol Fee Payments</TableCaption>
+        <TableHeader>
+          <TableRow className="px-4">
+            <TableHead>Date</TableHead>
+            <TableHead>Amount(USDG)</TableHead>
+            <TableHead>Transaction</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {donationsQuery.data?.donations.map((data) => (
+            <TableRow key={data.id}>
+              <TableCell>
+                {new Date(parseInt(data.blockTimestamp) * 1000).toDateString()}
+              </TableCell>
+              <TableCell>
+                {'$'}
+                {Number(formatUnits(data.amount, 6)).toLocaleString()}
+              </TableCell>
+              <TableCell>
+                <a
+                  className=" text-blue-500"
+                  //open in new tab
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href={`https://etherscan.io/tx/${data.transactionHash}`}
+                >
+                  {data.transactionHash}
+                </a>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {donationsQuery.isLoading ||
+        donationsQuery.isRefetching ||
+        (donationsQuery.isFetching && (
+          <div className="flex justify-center mt-12">
+            <Loader2 size={64} className="animate-spin h-12 w-12" />
+          </div>
+        ))}
     </main>
   )
 }
 
 export default Early
+
+export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
+  const rpcUrl = process.env.PRIVATE_RPC_URL!
+  const provider = new ethers.providers.JsonRpcProvider(rpcUrl)
+  const earlyLiquidity = EarlyLiquidity__factory.connect(
+    addresses.earlyLiquidity,
+    provider
+  )
+  const usdg = USDG__factory.connect(addresses.usdg, provider)
+  const totalSold = await earlyLiquidity.totalSold()
+  const totalSoldString = totalSold.toString()
+  const totalSoldNumber = parseFloat(formatEther(totalSoldString))
+  const totalUSDGSupply = await usdg.totalSupply()
+  const totalUSDGSupplyString = totalUSDGSupply.toString()
+  const totalUSDGSupplyNumber = parseFloat(
+    formatUnits(totalUSDGSupplyString, 6)
+  )
+  // Example usage
+  let firstTerm = 0.3 // First term of the series
+  let commonRatio = 1.0000006931474208 // Common ratio
+  const seriesSum = computeGeometricSeries(
+    firstTerm,
+    commonRatio,
+    totalSoldNumber
+  )
+  const props = {
+    totalRaised: seriesSum,
+    totalUSDGSupply: totalUSDGSupplyNumber,
+  }
+  return { props, revalidate: 30 }
+}) satisfies GetStaticProps<{
+  totalRaised: number
+  totalUSDGSupply: number
+}>
