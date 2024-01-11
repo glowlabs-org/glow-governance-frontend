@@ -31,6 +31,7 @@ import {
   FindAllDonationsSubgraphResponse,
   findAllDonations,
 } from '@/subgraph/queries/findAllDonations'
+import { getTotalProtocolFeesPaid } from '@/subgraph/queries/getTotalProtocolFeesPaid'
 async function fetchDonations(
   address: string,
   allDonations: FindAllDonationsSubgraphResponse
@@ -64,6 +65,7 @@ const Early = ({
   totalRaised,
   totalUSDGSupply,
   allDonations,
+  totalProtocolFeesPaid,
 }: InferGetStaticPropsType<typeof getStaticProps>) => {
   const [userAddress, setUserAddress] = React.useState<string>()
 
@@ -98,6 +100,10 @@ const Early = ({
             {totalUSDGSupply
               ? totalUSDGSupply.toLocaleString()
               : 'You must have a web3 wallet installed on your browser'}
+          </section>
+          <section>
+            Total Protocol Fees Paid: $
+            {parseFloat(totalProtocolFeesPaid).toLocaleString()}
           </section>
         </div>
         <div></div>
@@ -212,14 +218,20 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     commonRatio,
     totalSoldNumber
   )
+  const totalProtocolFeesPaid = await getTotalProtocolFeesPaid()
   const props = {
     totalRaised: seriesSum,
     totalUSDGSupply: totalUSDGSupplyNumber,
     allDonations: allDonations,
+    totalProtocolFeesPaid: formatUnits(
+      totalProtocolFeesPaid.protocolFeeSum.totalProtocolFeesPaid,
+      6
+    ),
   }
   return { props, revalidate: 30 }
 }) satisfies GetStaticProps<{
   totalRaised: number
   totalUSDGSupply: number
   allDonations: FindAllDonationsSubgraphResponse
+  totalProtocolFeesPaid: string
 }>
