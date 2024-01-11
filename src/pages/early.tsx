@@ -197,6 +197,13 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
   )
 
   const allDonations = await findAllDonations()
+  //sort the donations
+  const allDonationsSortedByTimestampDescending = allDonations.donations.sort(
+    (a, b) => {
+      return parseInt(b.blockTimestamp) - parseInt(a.blockTimestamp)
+    }
+  )
+  allDonations.donations = allDonationsSortedByTimestampDescending
   // Example usage
   let firstTerm = 0.3 // First term of the series
   let commonRatio = 1.0000006931474208 // Common ratio
