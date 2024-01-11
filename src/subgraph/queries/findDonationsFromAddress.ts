@@ -4,7 +4,7 @@ import { gql } from '@apollo/client'
 const createQuery = (address: string) => {
   return gql`
     {
-      donations(where: { user: "${address.toLowerCase()}" }) {
+      donations(where: { isDonation:true, user: "${address.toLowerCase()}" }) {
         id
         blockTimestamp
         transactionHash
