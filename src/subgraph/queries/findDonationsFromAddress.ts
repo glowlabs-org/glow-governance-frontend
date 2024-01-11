@@ -14,27 +14,15 @@ const createQuery = (address: string) => {
   `
 }
 
-/*
-{
-  "data": {
-    "gccretireds": [
-      {
-        "amount": "1000000000000000000",
-        "blockTimestamp": "1697553720",
-        "rewardAddress": {
-          "id": "0x897fe97aefd10a82146fbbdbff534bf1297a1c16"
-        }
-      }
-    ]
-  }
-}
-*/
 export type DonationsSubgraphResponse = {
   donations: {
     id: string
     blockTimestamp: string
     transactionHash: string
     amount: string
+    user: {
+      id: string
+    }
   }[]
 }
 

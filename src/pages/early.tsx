@@ -27,10 +27,15 @@ import {
 } from '@/components/ui/table'
 import { GetStaticPropsContext } from 'next'
 import { addresses } from '@/constants/addresses'
+import {
+  FindAllDonationsSubgraphResponse,
+  findAllDonations,
+} from '@/subgraph/queries/findAllDonations'
 async function fetchDonations(
-  address: string
+  address: string,
+  allDonations: FindAllDonationsSubgraphResponse
 ): Promise<DonationsSubgraphResponse | null> {
-  if (!isAddress(address)) return null
+  if (!isAddress(address)) return allDonations
   const res = await findDonationsFromAddress(address)
   //Order by block timestamp descending
   res.donations.sort((a, b) => {
@@ -58,6 +63,7 @@ function computeGeometricSeries(
 const Early = ({
   totalRaised,
   totalUSDGSupply,
+  allDonations,
 }: InferGetStaticPropsType<typeof getStaticProps>) => {
   const [userAddress, setUserAddress] = React.useState<string>()
 
@@ -65,8 +71,8 @@ const Early = ({
     queries: [
       {
         queryKey: ['donations', userAddress],
-        queryFn: () => fetchDonations(userAddress!),
-        enabled: isAddress(userAddress!),
+        queryFn: () => fetchDonations(userAddress!, allDonations),
+        // enabled:
       },
     ],
   })
@@ -103,9 +109,6 @@ const Early = ({
           placeholder="Enter your ethereum address"
           onChange={(e) => setUserAddress(e.target.value)}
         />
-        {donationsQuery.data
-          ? `You have donated ${donationsQuery.data.donations.length} times`
-          : 'Enter an ethereum address to check your donations'}
       </div>
       {/* {} */}
       <Table className="bg-white rounded-lg ">
@@ -115,6 +118,7 @@ const Early = ({
             <TableHead>Date</TableHead>
             <TableHead>Amount(USDG)</TableHead>
             <TableHead>Transaction</TableHead>
+            <TableHead>Payer</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -135,7 +139,17 @@ const Early = ({
                   rel="noopener noreferrer"
                   href={`https://etherscan.io/tx/${data.transactionHash}`}
                 >
-                  {data.transactionHash}
+                  {data.transactionHash.slice(0, 12) +
+                    '...' +
+                    data.transactionHash.slice(-4)}
+                </a>
+              </TableCell>
+              <TableCell>
+                <a
+                  className="text-blue-500"
+                  href={`https://etherscan.io/address/${data.user.id}`}
+                >
+                  {data.user.id.slice(0, 6) + '...' + data.user.id.slice(-4)}
                 </a>
               </TableCell>
             </TableRow>
@@ -171,6 +185,8 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
   const totalUSDGSupplyNumber = parseFloat(
     formatUnits(totalUSDGSupplyString, 6)
   )
+
+  const allDonations = await findAllDonations()
   // Example usage
   let firstTerm = 0.3 // First term of the series
   let commonRatio = 1.0000006931474208 // Common ratio
@@ -182,9 +198,11 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
   const props = {
     totalRaised: seriesSum,
     totalUSDGSupply: totalUSDGSupplyNumber,
+    allDonations: allDonations,
   }
   return { props, revalidate: 30 }
 }) satisfies GetStaticProps<{
   totalRaised: number
   totalUSDGSupply: number
+  allDonations: FindAllDonationsSubgraphResponse
 }>
