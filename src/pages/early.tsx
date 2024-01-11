@@ -109,6 +109,15 @@ const Early = ({
           placeholder="Enter your ethereum address"
           onChange={(e) => setUserAddress(e.target.value)}
         />
+        <p>
+          {userAddress && userAddress.length > 0 && !isAddress(userAddress) && (
+            <>
+              <span className="text-sm text-red-500 mb-3">
+                Invalid address: Showing all results
+              </span>
+            </>
+          )}
+        </p>
       </div>
       {/* {} */}
       <Table className="bg-white rounded-lg ">
@@ -147,6 +156,7 @@ const Early = ({
               <TableCell>
                 <a
                   className="text-blue-500"
+                  target="_blank"
                   href={`https://etherscan.io/address/${data.user.id}`}
                 >
                   {data.user.id.slice(0, 6) + '...' + data.user.id.slice(-4)}

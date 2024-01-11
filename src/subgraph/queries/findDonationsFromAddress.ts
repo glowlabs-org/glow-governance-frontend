@@ -5,10 +5,13 @@ const createQuery = (address: string) => {
   return gql`
     {
       donations(where: { isDonation:true, user: "${address.toLowerCase()}" }) {
-        id
-        blockTimestamp
-        transactionHash
-        amount
+        id,
+        blockTimestamp,
+        transactionHash,
+        amount,
+        user:{
+          id
+        }
       }
     }
   `
