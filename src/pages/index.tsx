@@ -35,6 +35,7 @@ import { SwapUSDGCard } from '@/components/Cards/SwapUSDG'
 import { useBalances } from '@/hooks/useBalances'
 import { GetStaticPropsContext } from 'next'
 import { findProposalsDash } from '@/subgraph/queries/proposals'
+import { BuyNominationsCard } from '@/components/Cards/BuyNominations'
 
 export default function Home({
   proposalDashInfo,
@@ -112,6 +113,7 @@ export default function Home({
             {/* <MintUSDCCard /> */}
             {/* <CommitUSDCCard /> */}
             <SwapUSDGCard />
+            <BuyNominationsCard />
           </div>
           <div className="py-4 border-b-white border-b mb-12">
             <h2 className="text-7xl mb-4  font-bold">
