@@ -15,7 +15,7 @@ import { goerli } from 'wagmi/chains'
 import { publicProvider } from 'wagmi/providers/public'
 
 const { chains, publicClient } = configureChains(
-  [goerli, mainnet],
+  [mainnet, goerli],
   [publicProvider()]
 )
 const queryClient = new QueryClient({})

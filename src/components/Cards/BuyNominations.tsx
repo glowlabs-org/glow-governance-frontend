@@ -159,10 +159,10 @@ export function DialogDemo({
   const errorText = () => {
     if (parseUnits(usdgBalance, 6) < BigInt(amountUSDGNeeded || 0)) {
       if (parseUnits(usdcBalance, 6) > BigInt(amountUSDGNeeded || 0)) {
-        return 'Swap USDG for USDC to purchase these nominations'
+        return 'Error: Swap USDG for USDC to purchase these nominations'
       }
 
-      return 'You do not have enough USDG or USDC to purchase these nominations'
+      return 'Error: You do not have enough USDG or USDC to purchase these nominations'
     }
     return undefined
   }
@@ -195,7 +195,7 @@ export function DialogDemo({
           </div>
         </div>
         <div className="flex flex-row text-sm">
-          <p className="text-red-400">Error: {errorText()}</p>
+          <p className="text-red-400">{errorText()}</p>
         </div>
         <DialogFooter>
           {errorText() ? (
@@ -203,7 +203,9 @@ export function DialogDemo({
               Confirm
             </Button>
           ) : (
-            <Button type="submit">Confirm</Button>
+            <Button onClick={commitUSDC} type="submit">
+              Confirm
+            </Button>
           )}
         </DialogFooter>
       </DialogContent>
