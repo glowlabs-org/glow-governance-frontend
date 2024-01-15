@@ -86,12 +86,17 @@ export const findProposalsDash = async (): Promise<ProposalDashResponse> => {
       //TODO: Check on-chain if the proposal has been executed
 
       // It's the week end of the week that it got submitted in + 1
-      const weekOfSubmissionForProposal =
-        Math.floor((proposalTimestamp - GENESIS_TIMESTAMP) / 604800) + 1
+      const weekOfSubmissionForProposal = Math.floor(
+        (proposalTimestamp - GENESIS_TIMESTAMP) / 604800
+      )
       // const
-      const currentWeek =
-        Math.floor((Date.now() / 1000 - GENESIS_TIMESTAMP) / 604800) + 1
-      const weekOfProposalExecution = weekOfSubmissionForProposal + 4
+      // console.log('weekOfSubmissionForProposal', weekOfSubmissionForProposal)
+      const currentWeek = Math.floor(
+        (Date.now() / 1000 - GENESIS_TIMESTAMP) / 604800
+      )
+      const weekOfProposalExecution = weekOfSubmissionForProposal + 5
+      // console.log({ weekOfProposalExecution })
+
       if (currentWeek >= weekOfProposalExecution) {
         const onchainStatus = allStatuses.find(
           (s) => s.proposalId === Number(proposal.id)

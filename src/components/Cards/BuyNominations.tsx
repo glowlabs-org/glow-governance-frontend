@@ -161,7 +161,6 @@ export function DialogDemo({
       if (parseUnits(usdcBalance, 6) > BigInt(amountUSDGNeeded || 0)) {
         return 'Error: Swap USDG for USDC to purchase these nominations'
       }
-
       return 'Error: You do not have enough USDG or USDC to purchase these nominations'
     }
     return undefined
