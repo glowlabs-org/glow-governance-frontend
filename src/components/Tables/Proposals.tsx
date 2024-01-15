@@ -144,10 +144,14 @@ export function ProposalsTable({
 
   const filteredByStatus = useMemo(() => {
     if (!proposalDashInfo) return []
-    return proposalDashInfo.proposals.filter(
+    const filtered = proposalDashInfo.proposals.filter(
       (proposal) =>
         proposal.status === selectedFilter || selectedFilter === 'View All'
     )
+    const sortedByBlockTimestampDesc = filtered.sort((a, b) => {
+      return parseInt(b.blockTimestamp) - parseInt(a.blockTimestamp)
+    })
+    return sortedByBlockTimestampDesc
   }, [proposalDashInfo, selectedFilter])
 
   const FilterButton = () => {

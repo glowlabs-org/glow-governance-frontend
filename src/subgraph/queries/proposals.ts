@@ -136,6 +136,10 @@ export const findProposalsDash = async (): Promise<ProposalDashResponse> => {
     //
   }
 
+  //sort by block timestamp descending
+  fullArray.proposals.sort((a, b) => {
+    return parseInt(b.blockTimestamp) - parseInt(a.blockTimestamp)
+  })
   return fullArray
 }
 
