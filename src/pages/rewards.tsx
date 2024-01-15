@@ -46,13 +46,13 @@ const Rewards = ({
     <main className="container">
       <div className="mx-auto py-12">
         <h1 className="font-bold text-4xl mb-4">
-          USDC Rewards By Protocol Week
+          USDG Rewards By Protocol Week
         </h1>
         <h2 className="mb-4 text-xl">
           Current Protocol Week: {getProtocolWeek()}
         </h2>
         <Table className="bg-white rounded-lg ">
-          <TableCaption>USDC Rewards Pool</TableCaption>
+          <TableCaption>USDG Rewards Pool</TableCaption>
           <TableHeader>
             <TableRow className="px-4">
               <TableHead>Protocol Week #</TableHead>
