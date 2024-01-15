@@ -5,7 +5,7 @@ import { useQueries } from '@tanstack/react-query'
 import { getProtocolWeek } from '@/utils/getProtocolWeek'
 // import {useMultical}
 import { Contract, Provider } from 'ethers-multicall'
-import { minerPoolAndGCAAbi } from '@/constants/abis/MinerPoolAndGCA.abi'
+import { minerPoolAndGCAAbi } from '@/constants/abis/MinerPoolAndGCAEthersAbi.abi'
 import {
   Table,
   TableBody,

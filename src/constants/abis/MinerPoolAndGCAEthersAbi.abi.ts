@@ -900,4 +900,4 @@ export const minerPoolAndGCAAbi = [
     stateMutability: 'nonpayable',
     type: 'function',
   },
-] as const
+]
