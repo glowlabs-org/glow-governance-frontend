@@ -112,16 +112,16 @@ function getCondensedDataFromDeviceRaw(
   for (let i = startSlot; i <= endSlot; ++i) {
     const powerOutput = device.PowerOutputs[i] //slotWeight
     if (SENTINEL_VALUES.includes(powerOutput)) continue //Don't count sentinel values
-    const impactRate = device.ImpactRates[i]
-    sumOfImpactPoints += impactRate * powerOutput //val += (impactRate(farm, slot) * slotWeight)
+    const impactRateRaw = device.ImpactRates[i]
+    sumOfImpactPoints += impactRateRaw * powerOutput //val += (impactRate(farm, slot) * slotWeight)
     sumOfCredits += calculateCreditsFromImpactPointsAndPowerOutput(
-      impactRate,
+      impactRateRaw,
       powerOutput
     )
     sumOfPowerOutputs += powerOutput //weight += slotWeight
   }
   const rollingImpactPoints =
-    sumOfPowerOutputs == 0 ? 0 : sumOfImpactPoints / sumOfPowerOutputs
+    sumOfPowerOutputs == 0 ? 0 : sumOfImpactPoints / sumOfPowerOutputs //val/weight and prevent divide by zero
   // print("farm impact rate: ", val/weight)
   return {
     rollingImpactPoints: rollingImpactPoints,
@@ -303,6 +303,7 @@ export default function Output() {
         2015 - currentSlot,
         2015
       )
+
       farmPubKeyToRollingImpactPointsMap.set(pubKey, condensedData)
     }
 
