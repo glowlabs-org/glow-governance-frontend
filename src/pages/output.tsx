@@ -44,6 +44,7 @@ import {
 } from 'chart.js'
 import { getSlotForCurrentWeek } from '@/utils/getSlotForCurrentWeek'
 import { SENTINEL_VALUES } from '@/constants/sentinel-values'
+import { CREDIT_MULTIPLIER } from '@/constants/credit-multiplier'
 
 ChartJS.register(
   CategoryScale,
@@ -190,10 +191,13 @@ function OutputTable2({
                   <TableCell className="font-medium">{d.pubKey}</TableCell>
                   <TableCell>{(d.powerOutput / 1e6).toFixed(2)}</TableCell>
                   <TableCell>
-                    {Math.floor(d.rollingImpactPoints / 1e3)}
+                    {/** The display needs to be multiplied by the credit multiplier*/}
+                    {Math.floor(
+                      (d.rollingImpactPoints * CREDIT_MULTIPLIER) / 1e3
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
-                    {d.carbonCreditsProduced.toFixed(4)}
+                    {(d.carbonCreditsProduced * CREDIT_MULTIPLIER).toFixed(4)}
                   </TableCell>
                 </TableRow>
               </>
