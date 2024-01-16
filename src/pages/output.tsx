@@ -419,7 +419,12 @@ export default function Output() {
         <h2>
           <span className="text-2xl font-bold">
             Carbon Credit Output For Week {weekNumber}:{' '}
-            {statsForWeekQuery.isLoading ? 'Loading...' : totalCredits}
+            {statsForWeekQuery.isLoading
+              ? 'Loading...'
+              : (typeof totalCredits === 'number'
+                  ? (totalCredits * CREDIT_MULTIPLIER).toFixed(4)
+                  : (parseFloat(totalCredits) * CREDIT_MULTIPLIER).toFixed(4)) +
+                ' '}
           </span>
 
           <Select
