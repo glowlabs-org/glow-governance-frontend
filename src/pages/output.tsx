@@ -69,6 +69,10 @@ type CondensedFarmData = {
   carbonCreditsProduced: number
 }
 
+type PastWeekArrayData = {
+  ImpactPoints: number[]
+  PowerOutputs: number[]
+}
 /// @dev Used for the table in {@link OutputTable2}
 type CondensedFarmDataWithPubKey = CondensedFarmData & {
   pubKey: string
@@ -97,22 +101,23 @@ type DeviceRaw = {
 /**
  *
  * @param device  the device response from the GCA Server
- * @param startSlot - the slot to start at
- * @param endSlot  - the slot to end at(inclusive)
+ * @param impactRates - the impact rates to use
+ * @param powerOutputs - the power outputs to use
  * @returns {CondensedFarmData} - the condensed farm data
  */
-function getCondensedDataFromDeviceRaw(
-  device: DeviceRaw,
-  startSlot: number,
-  endSlot: number
+function getCondensedDataFromImpactPointsAndPowerOutputs(
+  impactRatess: number[],
+  powerOutputs: number[]
 ): CondensedFarmData {
+  if (impactRatess.length !== powerOutputs.length)
+    throw new Error('Impact rates and power outputs must be the same length')
   let sumOfImpactPoints = 0 //val
   let sumOfCredits = 0
   let sumOfPowerOutputs = 0 //weight
-  for (let i = startSlot; i <= endSlot; ++i) {
-    const powerOutput = device.PowerOutputs[i] //slotWeight
+  for (let i = 0; i < impactRatess.length; ++i) {
+    const powerOutput = powerOutputs[i] //slotWeight
     if (SENTINEL_VALUES.includes(powerOutput)) continue //Don't count sentinel values
-    const impactRateRaw = device.ImpactRates[i]
+    const impactRateRaw = impactRatess[i]
     sumOfImpactPoints += impactRateRaw * powerOutput //val += (impactRate(farm, slot) * slotWeight)
     sumOfCredits += calculateCreditsFromImpactPointsAndPowerOutput(
       impactRateRaw,
@@ -183,8 +188,10 @@ function OutputTable2({
               <>
                 <TableRow>
                   <TableCell className="font-medium">{d.pubKey}</TableCell>
-                  <TableCell>{d.powerOutput / 1e6}</TableCell>
-                  <TableCell>{d.rollingImpactPoints}</TableCell>
+                  <TableCell>{(d.powerOutput / 1e6).toFixed(2)}</TableCell>
+                  <TableCell>
+                    {Math.floor(d.rollingImpactPoints / 1e3)}
+                  </TableCell>
                   <TableCell className="text-right">
                     {d.carbonCreditsProduced.toFixed(4)}
                   </TableCell>
@@ -290,7 +297,7 @@ export default function Output() {
     const aggregateChartData: AggregateChartData[] = []
     const currentSlot = getSlotForCurrentWeek()
 
-    const farmPubKeyToRollingImpactPointsMap: Map<string, CondensedFarmData> =
+    const farmPubKeyToRollingImpactPointsMap: Map<string, PastWeekArrayData> =
       new Map()
     const allPastDevices = dataForWeekBeforeJson?.Devices ?? []
     for (const device of allPastDevices) {
@@ -298,13 +305,22 @@ export default function Output() {
       //For the past data, that week has fully pased, so we get the end of the week [2015]
       // to the matching window such that the current week is [0, currentSlot] and the past week is [2015 - currentSlot, 2015]
       //That makes sure we have enough data to calculate the 7 day rolling impact points
-      const condensedData = getCondensedDataFromDeviceRaw(
-        device,
-        2015 - currentSlot,
-        2015
-      )
+      // const condensedData = getCondensedDataFromDeviceRaw(
+      //   device,
+      //   2015 - currentSlot,
+      //   2015
+      // )
+      const impactPoints: number[] = []
+      const powerOutput: number[] = []
+      for (let i = 2015 - currentSlot; i <= 2015; ++i) {
+        impactPoints.push(device.ImpactRates[i])
+        powerOutput.push(device.PowerOutputs[i])
+      }
 
-      farmPubKeyToRollingImpactPointsMap.set(pubKey, condensedData)
+      farmPubKeyToRollingImpactPointsMap.set(pubKey, {
+        ImpactPoints: impactPoints,
+        PowerOutputs: powerOutput,
+      })
     }
 
     const currentWeekFarmsRollingImpactPointsMap: Map<
@@ -318,22 +334,25 @@ export default function Output() {
     for (const device of allCurrentDevices) {
       const pubKey = farmPubKeyToId(device.PublicKey)
       //Get the condensed data for the current week from [0, currentSlot]
-      const condensedData = getCondensedDataFromDeviceRaw(
-        device,
-        0,
-        currentSlot
-      )
-      //Now add the past week's impact points if it exists
-      const pastWeekImpactPoints =
-        farmPubKeyToRollingImpactPointsMap.get(pubKey)
-      if (pastWeekImpactPoints) {
-        // Only increment the current week
-        condensedData.rollingImpactPoints +=
-          pastWeekImpactPoints.rollingImpactPoints
-
-        // NOTE: DO NOT INCREMENT THE CREDITS IN THIS WEEK
-        // The only rolling window is the impact points
+      const impactPoints: number[] = []
+      const powerOutputs: number[] = []
+      for (let i = 0; i <= currentSlot; ++i) {
+        impactPoints.push(device.ImpactRates[i])
+        powerOutputs.push(device.PowerOutputs[i])
       }
+
+      const pastData = farmPubKeyToRollingImpactPointsMap.get(pubKey)
+      if (pastData) {
+        for (let i = 0; i < pastData.ImpactPoints.length; ++i) {
+          impactPoints.push(pastData.ImpactPoints[i])
+          powerOutputs.push(pastData.PowerOutputs[i])
+        }
+      }
+      const condensedData = getCondensedDataFromImpactPointsAndPowerOutputs(
+        impactPoints,
+        powerOutputs
+      )
+
       currentWeekFarmsRollingImpactPointsMap.set(pubKey, {
         rollingImpactPoints: condensedData.rollingImpactPoints,
         carbonCreditsProduced: condensedData.carbonCreditsProduced,
