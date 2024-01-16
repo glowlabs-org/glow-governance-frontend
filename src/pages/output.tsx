@@ -13,22 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from '@/components/ui/command'
-import { ChartOptions, Tick } from 'chart.js'
-
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import { useContracts } from '@/hooks/useContracts'
-import { BigNumber, ethers } from 'ethers'
 import { PROXY_URL } from '@/constants/proxy-url'
 import { useQueries } from '@tanstack/react-query'
 import {
@@ -41,44 +25,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Loader2 } from 'lucide-react'
-
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import keccak256 from 'keccak256'
-
-const inter = Manrope({ subsets: ['latin'] })
-const TESTING: boolean = true
-const SENTINEL_VALUES = [1, 2] //1=cancelled, 2=ignore
-type ServerDataResponse = {
-  device: string
-  powerOutput: number
-  impactRate: number
-  credits: number
-}
-
-type AggregateChartData = {
-  timestamp: number
-  credits: number
-}
-
-function getTimestampFromWeekNumber(weekNumber: number, index: number) {
-  const indexTimesFiveMinutes = index * 5 * 60 * 1000 // 5 minutes in milliseconds
-  const SECONDS_IN_WEEK = 604800
-  //Do current week number minus one, and then add the index times 5 minutes
-  const timestamp =
-    GENESIS_TIMESTAMP * 1000 +
-    weekNumber * SECONDS_IN_WEEK * 1000 +
-    indexTimesFiveMinutes
-  return timestamp
-}
-
 import { getProtocolWeek } from '@/utils/getProtocolWeek'
 import { GCAServerResponse } from '@/types/GCAServerResponse'
 import { farmPubKeyToId } from '@/utils/farmPubKeyToId'
@@ -96,6 +42,8 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js'
+import { getSlotForCurrentWeek } from '@/utils/getSlotForCurrentWeek'
+import { SENTINEL_VALUES } from '@/constants/sentinel-values'
 
 ChartJS.register(
   CategoryScale,
@@ -107,31 +55,121 @@ ChartJS.register(
   Legend
 )
 
-// function getP
-function OutputTable({ data }: { data: GCAServerResponse }) {
-  const [dataSortedByCredits, setDataSortedByCredits] =
-    useState<GCAServerResponse>(data)
-  React.useEffect(() => {
-    const dataSortedByCredits = { ...data }
-    dataSortedByCredits.Devices.sort((a, b) => {
-      let aTotalCredits = 0
-      let bTotalCredits = 0
-      for (let i = 0; i < a.ImpactRates.length; ++i) {
-        const impactPoints = a.ImpactRates[i]
-        const powerOutput = a.PowerOutputs[i]
-        if (SENTINEL_VALUES.includes(powerOutput)) continue
-        aTotalCredits += (impactPoints * powerOutput) / 10 ** 15
-      }
-      for (let i = 0; i < b.ImpactRates.length; ++i) {
-        const impactPoints = b.ImpactRates[i]
-        const powerOutput = b.PowerOutputs[i]
-        if (SENTINEL_VALUES.includes(powerOutput)) continue
-        bTotalCredits += (impactPoints * powerOutput) / 10 ** 15
-      }
-      return bTotalCredits - aTotalCredits
-    })
-    setDataSortedByCredits(dataSortedByCredits)
-  }, [data])
+const TESTING: boolean = true
+
+/// @dev Used for ChartJS
+type AggregateChartData = {
+  timestamp: number
+  credits: number
+}
+
+type CondensedFarmData = {
+  rollingImpactPoints: number
+  powerOutput: number
+  carbonCreditsProduced: number
+}
+
+type PastWeekArrayData = {
+  ImpactPoints: number[]
+  PowerOutputs: number[]
+}
+/// @dev Used for the table in {@link OutputTable2}
+type CondensedFarmDataWithPubKey = CondensedFarmData & {
+  pubKey: string
+}
+
+/// @dev The Raw device data from the GCA Server for a single device
+/// @dev PowerOutputs and ImpactRates are arrays of length 2016
+type DeviceRaw = {
+  PublicKey: number[]
+  PowerOutputs: number[]
+  ImpactRates: number[]
+}
+
+//Conversation With @DavidVorick
+// for farm {
+//   weight := 0
+//   val := 0
+//   for slot {
+//       slotWeight := power(farm, slot)
+//       weight += slotWeight
+//       val += (impactRate(farm, slot) * slotWeight)
+//   }
+//   print("farm impact rate: ", val/weight)
+// }
+
+/**
+ *
+ * @param device  the device response from the GCA Server
+ * @param impactRates - the impact rates to use
+ * @param powerOutputs - the power outputs to use
+ * @returns {CondensedFarmData} - the condensed farm data
+ */
+function getCondensedDataFromImpactPointsAndPowerOutputs(
+  impactRatess: number[],
+  powerOutputs: number[]
+): CondensedFarmData {
+  if (impactRatess.length !== powerOutputs.length)
+    throw new Error('Impact rates and power outputs must be the same length')
+  let sumOfImpactPoints = 0 //val
+  let sumOfCredits = 0
+  let sumOfPowerOutputs = 0 //weight
+  for (let i = 0; i < impactRatess.length; ++i) {
+    const powerOutput = powerOutputs[i] //slotWeight
+    if (SENTINEL_VALUES.includes(powerOutput)) continue //Don't count sentinel values
+    const impactRateRaw = impactRatess[i]
+    sumOfImpactPoints += impactRateRaw * powerOutput //val += (impactRate(farm, slot) * slotWeight)
+    sumOfCredits += calculateCreditsFromImpactPointsAndPowerOutput(
+      impactRateRaw,
+      powerOutput
+    )
+    sumOfPowerOutputs += powerOutput //weight += slotWeight
+  }
+  const rollingImpactPoints =
+    sumOfPowerOutputs == 0 ? 0 : sumOfImpactPoints / sumOfPowerOutputs //val/weight and prevent divide by zero
+  // print("farm impact rate: ", val/weight)
+  return {
+    rollingImpactPoints: rollingImpactPoints,
+    carbonCreditsProduced: sumOfCredits,
+    powerOutput: sumOfPowerOutputs,
+  }
+}
+
+/**
+ *
+ * @param impactPoints - the impact points
+ * @param powerOutput - the power output
+ * @returns {number} - the credits produced
+ */
+function calculateCreditsFromImpactPointsAndPowerOutput(
+  impactPoints: number,
+  powerOutput: number
+): number {
+  return (impactPoints * powerOutput) / 10 ** 15
+}
+
+/**
+ *
+ * @param weekNumber  - the week number to get the timestamp for
+ * @param index - the index of the 5 minute slot
+ * @returns {number} - the timestamp in milliseconds
+ */
+function getTimestampFromWeekNumber(weekNumber: number, index: number): number {
+  const indexTimesFiveMinutes = index * 5 * 60 * 1000 // 5 minutes in milliseconds
+  const SECONDS_IN_WEEK = 604800
+  //Do current week number minus one, and then add the index times 5 minutes
+  const timestamp =
+    GENESIS_TIMESTAMP * 1000 +
+    weekNumber * SECONDS_IN_WEEK * 1000 +
+    indexTimesFiveMinutes
+  return timestamp
+}
+
+function OutputTable2({
+  condensedFarmData,
+}: {
+  condensedFarmData: CondensedFarmDataWithPubKey[]
+}) {
   return (
     <>
       <Table className="bg-white rounded-lg mt-8">
@@ -145,28 +183,17 @@ function OutputTable({ data }: { data: GCAServerResponse }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {dataSortedByCredits.Devices.map((device) => {
-            const pubKey = farmPubKeyToId(device.PublicKey)
-            let totalImpactPoints = 0
-            let totalPowerOutputs = 0
-            let totalCredits = 0
-            for (let i = 0; i < device.ImpactRates.length; ++i) {
-              const impactPoints = device.ImpactRates[i]
-              const powerOutput = device.PowerOutputs[i]
-              if (SENTINEL_VALUES.includes(powerOutput)) continue
-              totalImpactPoints += impactPoints
-              totalPowerOutputs += powerOutput
-              totalCredits += (impactPoints * powerOutput) / 10 ** 15
-            }
-
+          {condensedFarmData.map((d) => {
             return (
               <>
                 <TableRow>
-                  <TableCell className="font-medium">{pubKey}</TableCell>
-                  <TableCell>{totalPowerOutputs / 1e6}</TableCell>
-                  <TableCell>{totalImpactPoints}</TableCell>
+                  <TableCell className="font-medium">{d.pubKey}</TableCell>
+                  <TableCell>{(d.powerOutput / 1e6).toFixed(2)}</TableCell>
+                  <TableCell>
+                    {Math.floor(d.rollingImpactPoints / 1e3)}
+                  </TableCell>
                   <TableCell className="text-right">
-                    {totalCredits.toFixed(4)}
+                    {d.carbonCreditsProduced.toFixed(4)}
                   </TableCell>
                 </TableRow>
               </>
@@ -181,6 +208,7 @@ function OutputTable({ data }: { data: GCAServerResponse }) {
     </>
   )
 }
+
 export default function Output() {
   const [weekNumber, setWeekNumber] = useState(getProtocolWeek())
   const [chartData, setChartData] = useState({
@@ -246,27 +274,103 @@ export default function Output() {
     weekNumber: number
   ): Promise<{
     aggregateChartData: AggregateChartData[]
-    data: GCAServerResponse
+    condenseDataArray: CondensedFarmDataWithPubKey[]
   }> {
     //@ts-ignore
     if (!url) return undefined
     const weekTimes2016 = weekNumber * 2016
     // alert(weekTimes2016)
     const fullUrl = `${PROXY_URL}/${url}?timeslot_offset=${weekTimes2016}`
+
+    let dataForWeekBeforeJson: GCAServerResponse | undefined = undefined
+    if (weekNumber > 0) {
+      const dataForWeekBefore = await fetch(
+        `${PROXY_URL}/${url}?timeslot_offset=${weekTimes2016 - 2016}`
+      )
+      dataForWeekBeforeJson =
+        (await dataForWeekBefore.json()) as GCAServerResponse
+    }
     const res = await fetch(fullUrl)
     const data = (await res.json()) as GCAServerResponse
     // console.log({ data })
     let sumOfAllCredits: number = 0
     const aggregateChartData: AggregateChartData[] = []
+    const currentSlot = getSlotForCurrentWeek()
 
+    const farmPubKeyToRollingImpactPointsMap: Map<string, PastWeekArrayData> =
+      new Map()
+    const allPastDevices = dataForWeekBeforeJson?.Devices ?? []
+    for (const device of allPastDevices) {
+      const pubKey = farmPubKeyToId(device.PublicKey)
+      //For the past data, that week has fully pased, so we get the end of the week [2015]
+      // to the matching window such that the current week is [0, currentSlot] and the past week is [2015 - currentSlot, 2015]
+      //That makes sure we have enough data to calculate the 7 day rolling impact points
+      // const condensedData = getCondensedDataFromDeviceRaw(
+      //   device,
+      //   2015 - currentSlot,
+      //   2015
+      // )
+      const impactPoints: number[] = []
+      const powerOutput: number[] = []
+      for (let i = 2015 - currentSlot; i <= 2015; ++i) {
+        impactPoints.push(device.ImpactRates[i])
+        powerOutput.push(device.PowerOutputs[i])
+      }
+
+      farmPubKeyToRollingImpactPointsMap.set(pubKey, {
+        ImpactPoints: impactPoints,
+        PowerOutputs: powerOutput,
+      })
+    }
+
+    const currentWeekFarmsRollingImpactPointsMap: Map<
+      string,
+      CondensedFarmData
+    > = new Map()
+    const allCurrentDevices = data.Devices
+    /**
+     * For each device, we need to calculate the rolling impact points
+     */
+    for (const device of allCurrentDevices) {
+      const pubKey = farmPubKeyToId(device.PublicKey)
+      //Get the condensed data for the current week from [0, currentSlot]
+      const impactPoints: number[] = []
+      const powerOutputs: number[] = []
+      for (let i = 0; i <= currentSlot; ++i) {
+        impactPoints.push(device.ImpactRates[i])
+        powerOutputs.push(device.PowerOutputs[i])
+      }
+
+      const pastData = farmPubKeyToRollingImpactPointsMap.get(pubKey)
+      if (pastData) {
+        for (let i = 0; i < pastData.ImpactPoints.length; ++i) {
+          impactPoints.push(pastData.ImpactPoints[i])
+          powerOutputs.push(pastData.PowerOutputs[i])
+        }
+      }
+      const condensedData = getCondensedDataFromImpactPointsAndPowerOutputs(
+        impactPoints,
+        powerOutputs
+      )
+
+      currentWeekFarmsRollingImpactPointsMap.set(pubKey, {
+        rollingImpactPoints: condensedData.rollingImpactPoints,
+        carbonCreditsProduced: condensedData.carbonCreditsProduced,
+        powerOutput: condensedData.powerOutput,
+      })
+    }
+    /// @dev the impact rates length should always be 2016
     for (let i = 0; i < data.Devices[0].ImpactRates.length; ++i) {
       const timestamp = getTimestampFromWeekNumber(weekNumber, i)
       let sumOfCredits = 0
       for (let j = 0; j < data.Devices.length; j++) {
         const device = data.Devices[j]
         if (SENTINEL_VALUES.includes(device.PowerOutputs[i])) continue
-        const credits =
-          (device.ImpactRates[i] * device.PowerOutputs[i]) / 10 ** 15
+        const credits = calculateCreditsFromImpactPointsAndPowerOutput(
+          device.ImpactRates[i],
+          device.PowerOutputs[i]
+        )
+
         sumOfCredits += credits
         sumOfAllCredits += credits
       }
@@ -275,14 +379,26 @@ export default function Output() {
         credits: sumOfCredits,
       })
     }
-    setTotalCredits(sumOfAllCredits.toFixed(4))
-    return { aggregateChartData, data }
-  }
 
-  // React.useEffect(() => {
-  //   const totalCredits = getTotalCredits()
-  //   setTotalCredits(totalCredits)
-  // }, [statsForWeekQuery.data])
+    const condenseDataArrayNonsorted: CondensedFarmDataWithPubKey[] =
+      Array.from(currentWeekFarmsRollingImpactPointsMap.entries()).map(
+        ([pubKey, farmData]) => ({
+          pubKey,
+          ...farmData,
+        })
+      )
+
+    //Sort by credits descending
+    const condenseDataArray = condenseDataArrayNonsorted.sort((a, b) => {
+      return b.carbonCreditsProduced - a.carbonCreditsProduced
+    })
+
+    setTotalCredits(sumOfAllCredits.toFixed(4))
+    return {
+      aggregateChartData,
+      condenseDataArray: condenseDataArray,
+    }
+  }
 
   function getAllWeeksForSelect() {
     const weeks: number[] = []
@@ -334,12 +450,93 @@ export default function Output() {
             )}
           </div>
         </div>
-        {statsForWeekQuery.data?.data && (
-          <div className="flex justify-center items-center">
-            <OutputTable data={statsForWeekQuery.data?.data!} />
-          </div>
+        {statsForWeekQuery.data?.condenseDataArray && (
+          <>
+            {/* <div className="flex justify-center items-center">
+              <OutputTable data={statsForWeekQuery.data?.data!} />
+            </div> */}
+            <div className="flex justify-center items-center">
+              <OutputTable2
+                condensedFarmData={statsForWeekQuery.data?.condenseDataArray!}
+              />
+            </div>
+          </>
         )}
       </div>
     </div>
   )
 }
+
+// function OutputTable({ data }: { data: GCAServerResponse }) {
+//   const [dataSortedByCredits, setDataSortedByCredits] =
+//     useState<GCAServerResponse>(data)
+//   React.useEffect(() => {
+//     const dataSortedByCredits = { ...data }
+//     dataSortedByCredits.Devices.sort((a, b) => {
+//       let aTotalCredits = 0
+//       let bTotalCredits = 0
+//       for (let i = 0; i < a.ImpactRates.length; ++i) {
+//         const impactPoints = a.ImpactRates[i]
+//         const powerOutput = a.PowerOutputs[i]
+//         if (SENTINEL_VALUES.includes(powerOutput)) continue
+//         aTotalCredits += (impactPoints * powerOutput) / 10 ** 15
+//       }
+//       for (let i = 0; i < b.ImpactRates.length; ++i) {
+//         const impactPoints = b.ImpactRates[i]
+//         const powerOutput = b.PowerOutputs[i]
+//         if (SENTINEL_VALUES.includes(powerOutput)) continue
+//         bTotalCredits += (impactPoints * powerOutput) / 10 ** 15
+//       }
+//       return bTotalCredits - aTotalCredits
+//     })
+//     setDataSortedByCredits(dataSortedByCredits)
+//   }, [data])
+//   return (
+//     <>
+//       <Table className="bg-white rounded-lg mt-8">
+//         <TableCaption>All farms on this week</TableCaption>
+//         <TableHeader>
+//           <TableRow>
+//             <TableHead className="w-[100px]">Farm ID</TableHead>
+//             <TableHead>Power Output (Kilowatt Hours)</TableHead>
+//             <TableHead>Impact Rates</TableHead>
+//             <TableHead className="text-right">Total Credits</TableHead>
+//           </TableRow>
+//         </TableHeader>
+//         <TableBody>
+//           {dataSortedByCredits.Devices.map((device) => {
+//             const pubKey = farmPubKeyToId(device.PublicKey)
+//             let totalImpactPoints = 0
+//             let totalPowerOutputs = 0
+//             let totalCredits = 0
+//             for (let i = 0; i < device.ImpactRates.length; ++i) {
+//               const impactPoints = device.ImpactRates[i]
+//               const powerOutput = device.PowerOutputs[i]
+//               if (SENTINEL_VALUES.includes(powerOutput)) continue
+//               totalImpactPoints += impactPoints
+//               totalPowerOutputs += powerOutput
+//               totalCredits += (impactPoints * powerOutput) / 10 ** 15
+//             }
+
+//             return (
+//               <>
+//                 <TableRow>
+//                   <TableCell className="font-medium">{pubKey}</TableCell>
+//                   <TableCell>{totalPowerOutputs / 1e6}</TableCell>
+//                   <TableCell>{totalImpactPoints}</TableCell>
+//                   <TableCell className="text-right">
+//                     {totalCredits.toFixed(4)}
+//                   </TableCell>
+//                 </TableRow>
+//               </>
+//             )
+//           })}
+//           {/* <TableCell className="font-medium">INV001</TableCell>
+//             <TableCell>Paid</TableCell>
+//             <TableCell>Credit Card</TableCell>
+//             <TableCell className="text-right">$250.00</TableCell> */}
+//         </TableBody>
+//       </Table>
+//     </>
+//   )
+// }
