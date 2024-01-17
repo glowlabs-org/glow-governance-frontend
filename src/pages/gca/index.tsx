@@ -68,19 +68,18 @@ const calculateCredits = (powerOutputs: number[], impactRates: number[]) => {
     impactRatesSum,
   }
 }
+
 const inter = Manrope({ subsets: ['latin'] })
-const TESTING: boolean = true
+const TESTING: boolean = false
 const SENTINEL_VALUES = [1, 2] //1=cancelled, 2=ignore
 type ServerDataResponse = {
   device: string
   powerOutput: number
   impactRate: number
   credits: number
+  glowWeight: number
 }
-async function getServerData(
-  url: string,
-  weekNumber: number
-): Promise<ServerDataResponse[] | undefined> {
+async function getServerData(url: string, weekNumber: number) {
   if (!url) return undefined
   if (!url.includes('http')) return undefined //TODO: Adjust this as needed
   let weekNumberMinus1 = weekNumber - 1
@@ -88,22 +87,93 @@ async function getServerData(
   const weekTimes2016 = weekNumberMinus1 * 2016
   // alert(weekTimes2016)
   const fullUrl = `${PROXY_URL}/${url}?timeslot_offset=${weekTimes2016}`
-  const res = await fetch(fullUrl)
+  const equipmentUrl =
+    (PROXY_URL + '/' + url).split('/all-device-stats')[0] + '/equipment'
+
+  //make a promise.all
+  const [equipmentDataRes, res] = await Promise.all([
+    fetch(equipmentUrl),
+    fetch(fullUrl),
+  ])
+
+  // const responseMap = new Map<ServerDataResponse & { glowWeight: string }>()
+  const equipmentData = (await equipmentDataRes.json()) as GCAEquipmentResponse
+  const equipmentDataMap = new Map<string, EquipmentDetails>()
+  const equipmentDetailsKeys = Object.keys(equipmentData.EquipmentDetails)
+  for (let i = 0; i < equipmentDetailsKeys.length; i++) {
+    const key = equipmentDetailsKeys[i]
+    const value = equipmentData.EquipmentDetails[key]
+    if (value) {
+      equipmentDataMap.set(farmPubKeyToId(value.PublicKey), value)
+    }
+  }
   const data = (await res.json()) as GCAServerResponse
+  // console.log('full url = ', fullUrl)
   // console.log({ data })
+  // console.log({ data })
+  //TODO: calculate impact points the same way that /src/output.tsx does
   const serverData: ServerDataResponse[] = data.Devices.map((device, index) => {
     const { credits, powerOutputsSum, impactRatesSum } = calculateCredits(
       device.PowerOutputs,
       device.ImpactRates
     )
+    let glowWeight = 0
+    const equipmentDetails = equipmentDataMap.get(
+      farmPubKeyToId(device.PublicKey)
+    )
+    if (!equipmentDetails) {
+      console.log('equipmentDetails not found for ', device.PublicKey)
+    } else {
+      const donationSlot = equipmentDetails.Initialization
+      const matchingTimestamp = GENESIS_TIMESTAMP + donationSlot * 300
+      glowWeight = calculateVestingAmountForWeek({
+        currentTimestamp: Date.now() / 1000,
+        genesisTimestamp: GENESIS_TIMESTAMP,
+        joinTimestamp: matchingTimestamp,
+        totalVestingAmount: equipmentDetails.ProtocolFee,
+        totalVestingWeeks: 192,
+        vestingOffset: 16,
+      })
+      //Remove it from the map
+      equipmentDataMap.delete(farmPubKeyToId(device.PublicKey))
+      //
+    }
 
+    // console.log('------------------')
+    // console.log('pubkey', farmPubKeyToId(device.PublicKey))
+    // console.log(powerOutputsSum, impactRatesSum)
     return {
       device: farmPubKeyToId(device.PublicKey),
       powerOutput: powerOutputsSum,
       impactRate: impactRatesSum,
       credits: credits,
+      glowWeight: glowWeight,
     }
   })
+
+  // //Loop through all the farms that are left, and if they have a glow weight > 0, add them to the server data
+  const values = Array.from(equipmentDataMap.values())
+  for (const equipmentDetails of values) {
+    const donationSlot = equipmentDetails.Initialization
+    const matchingTimestamp = GENESIS_TIMESTAMP + donationSlot * 300
+    const glowWeight = calculateVestingAmountForWeek({
+      currentTimestamp: Date.now() / 1000,
+      genesisTimestamp: GENESIS_TIMESTAMP,
+      joinTimestamp: matchingTimestamp,
+      totalVestingAmount: equipmentDetails.ProtocolFee,
+      totalVestingWeeks: 192,
+      vestingOffset: 16,
+    })
+    if (glowWeight > 0) {
+      serverData.push({
+        device: farmPubKeyToId(equipmentDetails.PublicKey),
+        powerOutput: 0,
+        impactRate: 0,
+        credits: 0,
+        glowWeight: glowWeight,
+      })
+    }
+  }
   return serverData
 }
 /**
@@ -137,6 +207,7 @@ import { farmPubKeyToId } from '@/utils/farmPubKeyToId'
 async function getAllGCAServerUrls(): Promise<string[]> {
   const res = await fetch(API_URL + '/gca-server-urls')
   const data = (await res.json()) as string[]
+  console.log({ data })
   return data
 }
 
@@ -189,9 +260,10 @@ const isPubKeyFound = (pubKeyHex: string, data: CheckIfDevicesExistType) => {
 }
 
 export default function Component({ rawJWT }: { rawJWT: string }) {
-  console.log('raw jwt', rawJWT)
+  // console.log('raw jwt', rawJWT)
+  const { address } = useAccount()
   const { data: session } = useSession()
-  const gcaWalletAddress = session?.user?.name
+  const gcaWalletAddress = session?.user?.name || address
   const [serverUrl, setServerUrl] = useState('')
   const [weekNumber, setWeekNumber] = useState<number>(getProtocolWeek())
   const { minerPoolAndGCA: minerPoolAndGCA } = useContracts()
@@ -295,8 +367,9 @@ export default function Component({ rawJWT }: { rawJWT: string }) {
       }
 
       const numCreditsDownScaled = numCredits.div(10 ** (18 - WEIGHTS_DECIMALS))
-      //TODO: Calculate the actual weights
-      totalGlowWeight = totalGlowWeight.add(numCreditsDownScaled)
+
+      //TODO: Left off here
+      totalGlowWeight = totalGlowWeight.add(d.glowWeight)
       totalUSDCWeight = totalUSDCWeight.add(numCreditsDownScaled)
       totalGCCProduced = totalGCCProduced.add(numCredits)
       const devicePubKeyToFarm = devicesExistQuery.data?.foundPubKeyHexes.find(
@@ -573,7 +646,7 @@ export default function Component({ rawJWT }: { rawJWT: string }) {
                                         checked={
                                           !unselectedDeviceIndexes.includes(
                                             index
-                                          )
+                                          ) && row.credits !== 0
                                           // &&
                                           // !SENTINEL_VALUES.includes(
                                           //   row.powerOutput
@@ -610,8 +683,12 @@ export default function Component({ rawJWT }: { rawJWT: string }) {
                                 )}
                               </>
                             </TableCell>
-                            <TableCell>{row.powerOutput}</TableCell>
-                            <TableCell>{row.impactRate}</TableCell>
+                            <TableCell>
+                              {(row.powerOutput / 1e6).toFixed(2)}
+                            </TableCell>
+                            <TableCell>
+                              {(row.impactRate / 1e3).toFixed(2)}
+                            </TableCell>
                             <TableCell>{row.credits}</TableCell>
                           </TableRow>
                         )
@@ -794,6 +871,7 @@ async function createAFarmMutation(data: CreateFarmParams) {
     },
     body: JSON.stringify(data),
   })
+  console.log(res)
   const data2 = (await res.json()) as string
   return data2
 }
@@ -802,6 +880,13 @@ import { useMutation } from '@tanstack/react-query'
 import { isAddress, parseEther } from 'viem'
 import { Switch } from '@/components/ui/switch'
 import { GetServerSidePropsContext } from 'next'
+import { useAccount } from 'wagmi'
+import {
+  EquipmentDetails,
+  GCAEquipmentResponse,
+} from '@/types/GCAEquipmentResponse'
+import { GENESIS_TIMESTAMP } from '@/constants/genesis-timestamp'
+import { calculateVestingAmountForWeek } from '@/utils/calculateVestingAmountForWeek'
 export function CreateFarmButton({
   gcaWalletAddress,
 }: {
@@ -903,6 +988,7 @@ type AddDeviceToFarmParams = {
   nickname: string
 }
 async function addDeviceToFarm(args: AddDeviceToFarmParams) {
+  console.log({ args })
   const res = await fetch(API_URL + '/farm/createDevice', {
     method: 'POST',
     headers: {

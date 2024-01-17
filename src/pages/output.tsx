@@ -42,9 +42,10 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js'
-import { getSlotForCurrentWeek } from '@/utils/getSlotForCurrentWeek'
+import { getSlotIndexForSelectedWeek } from '@/utils/getSlotForCurrentWeek'
 import { SENTINEL_VALUES } from '@/constants/sentinel-values'
 import { CREDIT_MULTIPLIER } from '@/constants/credit-multiplier'
+import { sumOfArray } from '@/utils/sumOfArray'
 
 ChartJS.register(
   CategoryScale,
@@ -285,6 +286,7 @@ export default function Output() {
     const weekTimes2016 = weekNumber * 2016
     // alert(weekTimes2016)
     const fullUrl = `${PROXY_URL}/${url}?timeslot_offset=${weekTimes2016}`
+    console.log('fullUrl', fullUrl)
 
     let dataForWeekBeforeJson: GCAServerResponse | undefined = undefined
     if (weekNumber > 0) {
@@ -299,7 +301,7 @@ export default function Output() {
     // console.log({ data })
     let sumOfAllCredits: number = 0
     const aggregateChartData: AggregateChartData[] = []
-    const currentSlot = getSlotForCurrentWeek()
+    const currentSlot = getSlotIndexForSelectedWeek(weekNumber)
 
     const farmPubKeyToRollingImpactPointsMap: Map<string, PastWeekArrayData> =
       new Map()
@@ -314,9 +316,10 @@ export default function Output() {
       //   2015 - currentSlot,
       //   2015
       // )
+
       const impactPoints: number[] = []
       const powerOutput: number[] = []
-      for (let i = 2015 - currentSlot; i <= 2015; ++i) {
+      for (let i = 2015; i > currentSlot; --i) {
         impactPoints.push(device.ImpactRates[i])
         powerOutput.push(device.PowerOutputs[i])
       }
@@ -357,10 +360,15 @@ export default function Output() {
         powerOutputs
       )
 
+      const onlyThisWeekPowerOutput = device.PowerOutputs
+      const onlyThisWeekImpactPoints = device.ImpactRates
+      const sumOfThisWeeksPowerOutput = sumOfArray(onlyThisWeekPowerOutput)
+      const sumOfThisWeeksImpactPoints = sumOfArray(onlyThisWeekImpactPoints)
+
       currentWeekFarmsRollingImpactPointsMap.set(pubKey, {
         rollingImpactPoints: condensedData.rollingImpactPoints,
         carbonCreditsProduced: condensedData.carbonCreditsProduced,
-        powerOutput: condensedData.powerOutput,
+        powerOutput: sumOfThisWeeksPowerOutput,
       })
     }
     /// @dev the impact rates length should always be 2016
