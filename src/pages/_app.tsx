@@ -13,6 +13,7 @@ import { getDefaultWallets } from '@rainbow-me/rainbowkit'
 import { configureChains, createConfig } from 'wagmi'
 import { goerli } from 'wagmi/chains'
 import { publicProvider } from 'wagmi/providers/public'
+import Head from 'next/head'
 
 const { chains, publicClient } = configureChains(
   [mainnet, goerli],
@@ -45,20 +46,25 @@ export default function App({
 
   if (!hasMounted) return null //TODO: remove on deployments
   return (
-    <WagmiConfig config={wagmiConfig}>
-      <SessionProvider refetchInterval={0} session={pageProps.session}>
-        {/* <RainbowKitSiweNextAuthProvider> */}
-        <RainbowKitProvider chains={chains}>
-          <BalancesProvider>
-            <Nav />
-            <QueryClientProvider client={queryClient}>
-              <Component {...pageProps} />
-              {/* <ReactQueryDevtools initialIsOpen={false} /> */}
-            </QueryClientProvider>
-          </BalancesProvider>
-        </RainbowKitProvider>
-        {/* </RainbowKitSiweNextAuthProvider> */}
-      </SessionProvider>
-    </WagmiConfig>
+    <>
+      <Head>
+        <title>Glow Governance</title>
+      </Head>
+      <WagmiConfig config={wagmiConfig}>
+        <SessionProvider refetchInterval={0} session={pageProps.session}>
+          {/* <RainbowKitSiweNextAuthProvider> */}
+          <RainbowKitProvider chains={chains}>
+            <BalancesProvider>
+              <Nav />
+              <QueryClientProvider client={queryClient}>
+                <Component {...pageProps} />
+                {/* <ReactQueryDevtools initialIsOpen={false} /> */}
+              </QueryClientProvider>
+            </BalancesProvider>
+          </RainbowKitProvider>
+          {/* </RainbowKitSiweNextAuthProvider> */}
+        </SessionProvider>
+      </WagmiConfig>
+    </>
   )
 }

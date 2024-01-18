@@ -4,6 +4,7 @@ import { useAccount } from 'wagmi'
 import { useAccountModal } from '@rainbow-me/rainbowkit'
 import { Button } from '@/components/ui/button'
 import { useSession } from 'next-auth/react'
+import { MenuDrawer } from '@/components/MenuDrawer'
 
 const Nav = () => {
   const { openConnectModal } = useConnectModal()
@@ -88,7 +89,7 @@ const Nav = () => {
           </a>
         </div>
 
-        <div className="items-end justify-end flex">
+        <div className="items-center justify-end flex">
           {!address ? (
             <Button onClick={connect} size="lg">
               Connect
@@ -98,6 +99,9 @@ const Nav = () => {
               Connected
             </Button>
           )}
+          <div className="ml-4">
+            <MenuDrawer />
+          </div>
         </div>
       </div>
     </div>

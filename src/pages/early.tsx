@@ -92,18 +92,18 @@ const Early = ({
           <section className="">
             Total USDG Raised From Bonding Curve: $
             {totalRaised
-              ? totalRaised.toLocaleString()
+              ? totalRaised.toFixed(2)
               : 'You must have a web3 wallet installed on your browser'}
           </section>
           <section>
             Total USDG Supply:{' '}
             {totalUSDGSupply
-              ? totalUSDGSupply.toLocaleString()
+              ? totalUSDGSupply.toFixed(2)
               : 'You must have a web3 wallet installed on your browser'}
           </section>
           <section>
             Total Protocol Fees Paid: $
-            {parseFloat(totalProtocolFeesPaid).toLocaleString()}
+            {parseFloat(totalProtocolFeesPaid).toFixed(2)}
           </section>
         </div>
         <div></div>
@@ -144,7 +144,7 @@ const Early = ({
               </TableCell>
               <TableCell>
                 {'$'}
-                {Number(formatUnits(data.amount, 6)).toLocaleString()}
+                {Number(formatUnits(data.amount, 6)).toFixed(2)}
               </TableCell>
               <TableCell>
                 <a
