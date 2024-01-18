@@ -72,9 +72,9 @@ export function BuyNominationsCard() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Buy Nominations</CardTitle>
+        <CardTitle>Buy Impact Points</CardTitle>
         <CardDescription>
-          Enter the amount of nominations to buy
+          Enter the amount of impact points to buy
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -159,9 +159,9 @@ export function DialogDemo({
   const errorText = () => {
     if (parseUnits(usdgBalance, 6) < BigInt(amountUSDGNeeded || 0)) {
       if (parseUnits(usdcBalance, 6) > BigInt(amountUSDGNeeded || 0)) {
-        return 'Error: Swap USDG for USDC to purchase these nominations'
+        return 'Error: Swap USDG for USDC to purchase these impact points'
       }
-      return 'Error: You do not have enough USDG or USDC to purchase these nominations'
+      return 'Error: You do not have enough USDG or USDC to purchase these impact points'
     }
     return undefined
   }
@@ -169,12 +169,12 @@ export function DialogDemo({
     <Dialog>
       <DialogTrigger asChild>
         <Button onClick={openButtonFunction} className="ml-auto">
-          Buy Nominations
+          Buy Impact Points
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Purchase Nominations</DialogTitle>
+          <DialogTitle>Purchase Impact Points</DialogTitle>
           <DialogDescription>
             You will need to purchase{' '}
             {formatUnits(BigInt(amountUSDGNeeded || 0), 6)} USDG to purchase{' '}

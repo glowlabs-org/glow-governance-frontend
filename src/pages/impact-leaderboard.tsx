@@ -100,7 +100,7 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
   const props = {
     leaderboard: modifiedLeaderboard,
   }
-  return { props, revalidate: 30 }
+  return { props, revalidate: 60 } //revalidate every minute
 }) satisfies GetStaticProps<{
   leaderboard: ImpactPointsLeaderboardProps[]
 }>

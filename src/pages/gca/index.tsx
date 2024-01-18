@@ -614,6 +614,7 @@ export default function Component({ rawJWT }: { rawJWT: string }) {
                         <TableHead>Power Output</TableHead>
                         <TableHead>Impact Rate</TableHead>
                         <TableHead>Credits</TableHead>
+                        <TableHead>Glow Weight</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -690,6 +691,7 @@ export default function Component({ rawJWT }: { rawJWT: string }) {
                               {(row.impactRate / 1e3).toFixed(2)}
                             </TableCell>
                             <TableCell>{row.credits}</TableCell>
+                            <TableCell>{row.glowWeight}</TableCell>
                           </TableRow>
                         )
                       })}
