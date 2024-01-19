@@ -54,7 +54,7 @@ export default function App({
         <SessionProvider refetchInterval={0} session={pageProps.session}>
           {/* <RainbowKitSiweNextAuthProvider> */}
           <div className="bg-white">
-            <div className="bg-[#f3f1e8] w-[93vw] mx-auto rounded-lg my-2">
+            <div className="bg-[#f3f1e8] w-[93vw] min-h-screen mx-auto rounded-lg my-2">
               <RainbowKitProvider chains={chains}>
                 <BalancesProvider>
                   <Nav />
