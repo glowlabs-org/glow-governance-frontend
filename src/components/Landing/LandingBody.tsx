@@ -1,4 +1,5 @@
 import { useBalances } from '@/hooks/useBalances'
+import { formatNumber } from '@/utils/formatNumber'
 const LandingBody = () => {
   const {
     gccBalance,
@@ -7,10 +8,10 @@ const LandingBody = () => {
     usdcBalance,
     usdgBalance,
   } = useBalances()
-  const parseFloatToFixed2OrEmptyString = (value: string) => {
-    const parsed = parseFloat(value)
+  const parseFloatToFixed2OrEmptyString = (value: string | number) => {
+    const parsed = parseFloat(`${value}`)
     if (isNaN(parsed)) return ''
-    return parsed.toFixed(2)
+    return formatNumber(parsed)
   }
   return (
     <div className="pl-3 flex flex-col items-start justify-end py-8 max-w-[1400px] w-full bg-accent-1 rounded-xl">

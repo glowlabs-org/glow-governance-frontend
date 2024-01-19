@@ -44,6 +44,12 @@ async function fetchDonations(
   })
   return res
 }
+function formatNumber(num: number) {
+  return num.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
 
 function computeGeometricSeries(
   firstTerm: number,
@@ -92,18 +98,18 @@ const Early = ({
           <section className="">
             Total USDG Raised From Bonding Curve: $
             {totalRaised
-              ? totalRaised.toFixed(2)
+              ? formatNumber(totalRaised)
               : 'You must have a web3 wallet installed on your browser'}
           </section>
           <section>
-            Total USDG Supply:{' '}
+            Total USDG Supply:{' $'}
             {totalUSDGSupply
-              ? totalUSDGSupply.toFixed(2)
+              ? formatNumber(totalUSDGSupply)
               : 'You must have a web3 wallet installed on your browser'}
           </section>
           <section>
             Total Protocol Fees Paid: $
-            {parseFloat(totalProtocolFeesPaid).toFixed(2)}
+            {formatNumber(parseFloat(totalProtocolFeesPaid))}
           </section>
         </div>
         <div></div>
@@ -144,7 +150,7 @@ const Early = ({
               </TableCell>
               <TableCell>
                 {'$'}
-                {Number(formatUnits(data.amount, 6)).toFixed(2)}
+                {formatNumber(parseFloat(formatUnits(data.amount, 6)))}
               </TableCell>
               <TableCell>
                 <a

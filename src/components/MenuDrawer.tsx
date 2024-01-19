@@ -1,3 +1,4 @@
+'use client'
 import {
   Sheet,
   SheetContent,
@@ -6,7 +7,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
+import { cn } from '@/lib/utils'
 import { link } from 'fs'
+import { useRouter } from 'next/router'
 
 const links = [
   {
@@ -36,6 +39,9 @@ const links = [
   },
 ]
 export const MenuDrawer = () => {
+  const router = useRouter()
+  const { pathname } = router
+  //   console.log('pathname', pathname)
   return (
     <Sheet>
       <SheetTrigger>
@@ -49,7 +55,7 @@ export const MenuDrawer = () => {
       </SheetTrigger>
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>Menu</SheetTitle>
+          <SheetTitle className="border-b">Menu</SheetTitle>
           <SheetDescription>
             {/* This action cannot be undone. This will permanently delete your
             account and remove your data from our servers. */}
@@ -57,9 +63,15 @@ export const MenuDrawer = () => {
         </SheetHeader>
         <div className="flex flex-col gap-y-4">
           {links.map((link) => {
+            const isSelected = pathname === link.href
             return (
               <a href={link.href}>
-                <div className="flex flex-row items-center gap-x-4">
+                <div
+                  className={cn(
+                    'flex flex-row items-center gap-x-4 py-2 px-2 rounded-lg hover:bg-gray-100 duration-75',
+                    isSelected && 'bg-gray-200'
+                  )}
+                >
                   <div className="flex flex-col">
                     <p className="font-bold">{link.name}</p>
                     <p className="text-sm text-slate-500">{link.description}</p>
