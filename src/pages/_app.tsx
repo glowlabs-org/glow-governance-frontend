@@ -53,15 +53,19 @@ export default function App({
       <WagmiConfig config={wagmiConfig}>
         <SessionProvider refetchInterval={0} session={pageProps.session}>
           {/* <RainbowKitSiweNextAuthProvider> */}
-          <RainbowKitProvider chains={chains}>
-            <BalancesProvider>
-              <Nav />
-              <QueryClientProvider client={queryClient}>
-                <Component {...pageProps} />
-                {/* <ReactQueryDevtools initialIsOpen={false} /> */}
-              </QueryClientProvider>
-            </BalancesProvider>
-          </RainbowKitProvider>
+          <div className="bg-white">
+            <div className="bg-[#f3f1e8] w-[93vw] mx-auto rounded-lg my-2">
+              <RainbowKitProvider chains={chains}>
+                <BalancesProvider>
+                  <Nav />
+                  <QueryClientProvider client={queryClient}>
+                    <Component {...pageProps} />
+                    {/* <ReactQueryDevtools initialIsOpen={false} /> */}
+                  </QueryClientProvider>
+                </BalancesProvider>
+              </RainbowKitProvider>
+            </div>
+          </div>
           {/* </RainbowKitSiweNextAuthProvider> */}
         </SessionProvider>
       </WagmiConfig>

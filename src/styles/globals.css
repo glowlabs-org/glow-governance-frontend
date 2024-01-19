@@ -82,7 +82,6 @@
     @apply bg-background text-foreground;
   } */
   body {
-    background: #f3f1e8;
     font:
       16px/1.5 'Manrope',
       sans-serif;
