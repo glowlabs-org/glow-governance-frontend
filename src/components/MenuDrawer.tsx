@@ -18,12 +18,12 @@ const links = [
     description: 'The home page',
   },
   {
-    name: 'Stats',
+    name: 'Protocol Fees',
     href: '/protocol-fees',
     description: 'See early liqudity and protocol fee donations',
   },
   {
-    name: 'Output',
+    name: 'Weekly Reports',
     href: '/weekly-reports',
     description: 'See farm output',
   },
