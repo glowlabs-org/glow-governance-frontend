@@ -46,7 +46,12 @@ import { getSlotIndexForSelectedWeek } from '@/utils/getSlotForCurrentWeek'
 import { SENTINEL_VALUES } from '@/constants/sentinel-values'
 import { CREDIT_MULTIPLIER } from '@/constants/credit-multiplier'
 import { sumOfArray } from '@/utils/sumOfArray'
-
+import { currentGcaUrl } from '@/constants/current-gca-url'
+import {
+  ServerDataResponse,
+  getServerDataForFarmAndWeights,
+} from '@/utils/getFarmServerDataAndWeights'
+import { formatNumber } from '@/utils/formatNumber'
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -71,14 +76,18 @@ type CondensedFarmData = {
   carbonCreditsProduced: number
 }
 
+type CondensedFarmDataAndGlowRewards = CondensedFarmData & {
+  glowRewards: number
+}
 type PastWeekArrayData = {
   ImpactPoints: number[]
   PowerOutputs: number[]
 }
 /// @dev Used for the table in {@link OutputTable2}
-type CondensedFarmDataWithPubKey = CondensedFarmData & {
-  pubKey: string
-}
+type CondensedFarmDataWithPubKeyAndGlowRewards =
+  CondensedFarmDataAndGlowRewards & {
+    pubKey: string
+  }
 
 /// @dev The Raw device data from the GCA Server for a single device
 /// @dev PowerOutputs and ImpactRates are arrays of length 2016
@@ -86,6 +95,10 @@ type DeviceRaw = {
   PublicKey: number[]
   PowerOutputs: number[]
   ImpactRates: number[]
+}
+
+function totalGlowRewardsForWeek() {
+  return 175_000
 }
 
 //Conversation With @DavidVorick
@@ -169,8 +182,10 @@ function getTimestampFromWeekNumber(weekNumber: number, index: number): number {
 
 function OutputTable2({
   condensedFarmData,
+  weekNumber: weekNumber,
 }: {
-  condensedFarmData: CondensedFarmDataWithPubKey[]
+  condensedFarmData: CondensedFarmDataWithPubKeyAndGlowRewards[]
+  weekNumber: number
 }) {
   return (
     <>
@@ -181,7 +196,12 @@ function OutputTable2({
             <TableHead className="w-[100px]">Farm ID</TableHead>
             <TableHead>Power Output (Kilowatt Hours)</TableHead>
             <TableHead>Impact Rates</TableHead>
-            <TableHead className="text-right">Total Credits</TableHead>
+            <TableHead className="">Total Credits</TableHead>
+            <TableHead className="text-right">
+              {weekNumber === getProtocolWeek()
+                ? 'Glow Rewards(Estimated)'
+                : 'Glow Rewards'}
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -197,8 +217,11 @@ function OutputTable2({
                       (d.rollingImpactPoints * CREDIT_MULTIPLIER) / 1e3
                     )}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="">
                     {(d.carbonCreditsProduced * CREDIT_MULTIPLIER).toFixed(4)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(d.glowRewards)}
                   </TableCell>
                 </TableRow>
               </>
@@ -233,11 +256,7 @@ export default function Output() {
     queries: [
       {
         queryKey: ['statsForWeek', weekNumber],
-        queryFn: () =>
-          getCreditsForWeek(
-            'http://95.217.194.59:35015/api/v1/all-device-stats',
-            weekNumber
-          ),
+        queryFn: () => getCreditsForWeek(currentGcaUrl, weekNumber),
         refetchInterval: 1000 * 60 * 60,
         //@ts-ignore
         onSuccess: ({ aggregateChartData }) => {
@@ -279,8 +298,9 @@ export default function Output() {
     weekNumber: number
   ): Promise<{
     aggregateChartData: AggregateChartData[]
-    condenseDataArray: CondensedFarmDataWithPubKey[]
+    condenseDataArray: CondensedFarmDataWithPubKeyAndGlowRewards[]
   }> {
+    let totalGlowWeight = 0
     //@ts-ignore
     if (!url) return undefined
     const weekTimes2016 = weekNumber * 2016
@@ -299,6 +319,17 @@ export default function Output() {
     const res = await fetch(fullUrl)
     const data = (await res.json()) as GCAServerResponse
     // console.log({ data })
+    const glowRewards = await getServerDataForFarmAndWeights(
+      url,
+      weekNumber,
+      true
+    )
+    if (!glowRewards) throw new Error('Glow Rewards is undefined')
+    const glowRewardsMap = new Map<string, Omit<ServerDataResponse, 'device'>>()
+    for (const glowReward of glowRewards) {
+      totalGlowWeight += glowReward.glowWeight
+      glowRewardsMap.set(glowReward.device, glowReward)
+    }
     let sumOfAllCredits: number = 0
     const aggregateChartData: AggregateChartData[] = []
     const currentSlot = getSlotIndexForSelectedWeek(weekNumber)
@@ -332,7 +363,7 @@ export default function Output() {
 
     const currentWeekFarmsRollingImpactPointsMap: Map<
       string,
-      CondensedFarmData
+      CondensedFarmDataAndGlowRewards
     > = new Map()
     const allCurrentDevices = data.Devices
     /**
@@ -364,11 +395,18 @@ export default function Output() {
       const onlyThisWeekImpactPoints = device.ImpactRates
       const sumOfThisWeeksPowerOutput = sumOfArray(onlyThisWeekPowerOutput)
       const sumOfThisWeeksImpactPoints = sumOfArray(onlyThisWeekImpactPoints)
+      let glowRewardsForFarm = 0
+      const glowReward = glowRewardsMap.get(farmPubKeyToId(device.PublicKey))
+      if (glowReward) {
+        glowRewardsForFarm =
+          (glowReward.glowWeight * totalGlowRewardsForWeek()) / totalGlowWeight
+      }
 
       currentWeekFarmsRollingImpactPointsMap.set(pubKey, {
         rollingImpactPoints: condensedData.rollingImpactPoints,
         carbonCreditsProduced: condensedData.carbonCreditsProduced,
         powerOutput: sumOfThisWeeksPowerOutput,
+        glowRewards: glowRewardsForFarm,
       })
     }
     /// @dev the impact rates length should always be 2016
@@ -392,7 +430,7 @@ export default function Output() {
       })
     }
 
-    const condenseDataArrayNonsorted: CondensedFarmDataWithPubKey[] =
+    const condenseDataArrayNonsorted: CondensedFarmDataWithPubKeyAndGlowRewards[] =
       Array.from(currentWeekFarmsRollingImpactPointsMap.entries()).map(
         ([pubKey, farmData]) => ({
           pubKey,
@@ -475,6 +513,7 @@ export default function Output() {
             <div className="flex justify-center items-center">
               <OutputTable2
                 condensedFarmData={statsForWeekQuery.data?.condenseDataArray!}
+                weekNumber={weekNumber}
               />
             </div>
           </>
