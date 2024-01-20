@@ -282,7 +282,7 @@ export default function Output() {
               {
                 ...chartData.datasets[0],
                 //@ts-ignore
-                data: aggregateChartData.map((d) => d.credits),
+                data: aggregateChartData.map((d) => d.credits * 2016),
               },
             ],
           }
