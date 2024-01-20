@@ -604,7 +604,7 @@ async function getEarlyLiquidityStats(client: PublicClient) {
     args: [BigInt(1)],
   })) as bigint
 
-  const currentPriceEarlyLiquidity = formatUnits(currentPrice, 6)
+  const currentPriceEarlyLiquidity = formatUnits(currentPrice, 4)
 
   return {
     totalSoldInEarlyLiquidity,
