@@ -243,7 +243,7 @@ export default function Output() {
     labels: [],
     datasets: [
       {
-        label: `Production For Week ${weekNumber}`,
+        label: `Production`,
         data: [],
         borderColor: 'rgb(75, 192, 192)',
         tension: 0.1,

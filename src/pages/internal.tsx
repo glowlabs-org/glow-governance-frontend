@@ -11,6 +11,9 @@ import {
 import { GCCGuardedLaunchABI } from '@/constants/abis/GCCGuardedLaunchAbi.abi'
 import { EarlyLiquidityABI } from '@/constants/abis/EarlyLiquidity.abi'
 import { computeTotalRaisedFromEarlyLiquidity } from '@/utils/computeTotalRaisedFromEarlyLiquidity'
+import { client } from '@/subgraph/client'
+import { gql } from '@apollo/client'
+import { formatNumber } from '@/utils/formatNumber'
 const minimalPairAbi = [
   'function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)',
 ]
@@ -89,105 +92,162 @@ const Internal = ({
   totalRemainingInEarlyLiquidity,
   totalRaisedFromEarlyLiquidity,
   currentPriceEarlyLiquidity,
+  totalGlowAmountIn_GLOW_USDGPair,
+  totalGlowAmountOut_GLOW_USDGPair,
+  totalUSDGAmountIn_GLOW_USDGPair,
+  totalUSDGAmountOut_GLOW_USDGPair,
+  totalGCCAmountIn_USDG_GCCPair,
+  totalGCCAmountOut_USDG_GCCPair,
+  totalUSDGAmountIn_USDG_GCCPair,
+  totalUSDGAmountOut_USDG_GCCPair,
+  totalImpactPoints,
 }: InferGetStaticPropsType<typeof getStaticProps>) => {
   const gccStats = [
     {
       title: 'GCC Price',
-      value: gccPrice,
+      value: formatNumber(gccPrice),
     },
     {
       title: 'GCC Liquidity',
-      value: gccLiquidity,
+      value: formatNumber(gccLiquidity),
     },
     {
       title: 'USDG Liquidity in GCC Pool',
-      value: usdgLiquidityGCCPool,
+      value: formatNumber(usdgLiquidityGCCPool),
     },
     {
       title: 'Total Liquidity in USD in GCC Pool',
-      value: totalLiquidityUSDollarsGCCPool,
+      value: formatNumber(totalLiquidityUSDollarsGCCPool),
     },
     {
       title: 'Total Supply of GCC',
-      value: totalSupplyGCC,
+      value: formatNumber(totalSupplyGCC),
     },
     {
       title: 'GCC Balance in Carbon Credit Auction',
-      value: carbonCreditAuctionGCCBalance,
+      value: formatNumber(carbonCreditAuctionGCCBalance),
     },
     {
       title: 'Total Supply of GCC without Carbon Credit Auction',
-      value: totalSupplyGCCWithoutCarbonCreditAuction,
+      value: formatNumber(totalSupplyGCCWithoutCarbonCreditAuction),
     },
     {
       title: 'GCC Market Cap(without Carbon Credit Auction)',
-      value:
-        Number(totalSupplyGCCWithoutCarbonCreditAuction) * Number(gccPrice),
+      value: formatNumber(
+        Number(totalSupplyGCCWithoutCarbonCreditAuction) * Number(gccPrice)
+      ),
     },
   ]
   const glowStats = [
     {
       title: 'Glow Price',
-      value: glowPrice,
+      value: formatNumber(glowPrice),
     },
     {
       title: 'Glow Liquidity',
-      value: glowLiquidity,
+      value: formatNumber(glowLiquidity),
     },
     {
       title: 'USDG Liquidity in Glow Pool',
-      value: usdgLiquidityGlowPool,
+      value: formatNumber(usdgLiquidityGlowPool),
     },
     {
       title: 'Total Liquidity in USD in Glow Pool',
-      value: totalLiquidityUSDollarsGlowPool,
+      value: formatNumber(totalLiquidityUSDollarsGlowPool),
     },
     {
       title: 'Total Supply of Glow',
-      value: totalSupplyGlow,
+      value: formatNumber(totalSupplyGlow),
     },
     {
       title: 'Glow Balance in Carbon Credit Auction',
-      value: carbonCreditAuctionGlowBalance,
+      value: formatNumber(carbonCreditAuctionGlowBalance),
     },
     {
       title: 'Glow Balance in Early Liquidity',
-      value: earlyLiquidityGlowBalance,
+      value: formatNumber(earlyLiquidityGlowBalance),
     },
     {
       title: 'Glow Balance in Grants Treasury',
-      value: grantsTreasuryGlowBalance,
+      value: formatNumber(grantsTreasuryGlowBalance),
     },
     {
       title: 'Total Staked',
-      value: totalStaked,
+      value: formatNumber(totalStaked),
     },
     {
       title: 'Total Supply of Glow without Locked Amounts',
-      value: totalSupplyGlowWithoutLockedAmounts,
+      value: formatNumber(totalSupplyGlowWithoutLockedAmounts),
     },
     {
       title: 'Glow Market Cap(without Locked Amounts)',
-      value: Number(totalSupplyGlowWithoutLockedAmounts) * Number(glowPrice),
+      value: formatNumber(
+        Number(totalSupplyGlowWithoutLockedAmounts) * Number(glowPrice)
+      ),
     },
   ]
 
   const earlyLiquidityStats = [
     {
       title: 'Total Sold in Early Liquidity',
-      value: totalSoldInEarlyLiquidity,
+      value: formatNumber(totalSoldInEarlyLiquidity),
     },
     {
       title: 'Total Remaining in Early Liquidity',
-      value: totalRemainingInEarlyLiquidity,
+      value: formatNumber(totalRemainingInEarlyLiquidity),
     },
     {
       title: 'Total Raised from Early Liquidity',
-      value: totalRaisedFromEarlyLiquidity,
+      value: formatNumber(totalRaisedFromEarlyLiquidity),
     },
     {
       title: 'Current Price in Early Liquidity',
-      value: currentPriceEarlyLiquidity,
+      value: formatNumber(currentPriceEarlyLiquidity),
+    },
+  ]
+
+  const glowUniswapStats = [
+    {
+      title: 'Total GLOW Amount In UniV2',
+      value: formatNumber(totalGlowAmountIn_GLOW_USDGPair),
+    },
+    {
+      title: 'Total GLOW Amount Out GLOW_USDG Pair',
+      value: formatNumber(totalGlowAmountOut_GLOW_USDGPair),
+    },
+    {
+      title: 'Total USDG Amount In GLOW_USDG Pair',
+      value: formatNumber(totalUSDGAmountIn_GLOW_USDGPair),
+    },
+    {
+      title: 'Total USDG Amount Out GLOW_USDG Pair',
+      value: formatNumber(totalUSDGAmountOut_GLOW_USDGPair),
+    },
+  ]
+
+  const gccUniswapStats = [
+    {
+      title: 'Total GCC Amount In USDG_GCC Pair',
+      value: formatNumber(totalGCCAmountIn_USDG_GCCPair),
+    },
+    {
+      title: 'Total GCC Amount Out USDG_GCC Pair',
+      value: formatNumber(totalGCCAmountOut_USDG_GCCPair),
+    },
+    {
+      title: 'Total USDG Amount In USDG_GCC Pair',
+      value: formatNumber(totalUSDGAmountIn_USDG_GCCPair),
+    },
+    {
+      title: 'Total USDG Amount Out USDG_GCC Pair',
+      value: formatNumber(totalUSDGAmountOut_USDG_GCCPair),
+    },
+  ]
+
+  const impactPointsStats = [
+    {
+      title: 'Total Impact Points',
+      value: formatNumber(totalImpactPoints),
     },
   ]
 
@@ -196,6 +256,9 @@ const Internal = ({
       <StatSection title="GCC Stats" stats={gccStats} />
       <StatSection title="Glow Stats" stats={glowStats} />
       <StatSection title="Early Liquidity Stats" stats={earlyLiquidityStats} />
+      <StatSection title="GCC Uniswap Stats" stats={gccUniswapStats} />
+      <StatSection title="Glow Uniswap Stats" stats={glowUniswapStats} />
+      <StatSection title="Impact Points Stats" stats={impactPointsStats} />
     </div>
   )
 }
@@ -361,6 +424,158 @@ async function getDashboardParams(client: PublicClient) {
   }
 }
 
+type UniswapAggregatesAndImpactPointsSubgraphResponse = {
+  totalGLOWUSDGPairAggregate: {
+    totalAmountOneIn: string
+    totalAmountOneOut: string
+    totalAmountZeroIn: string
+    totalAmountZeroOut: string
+  }
+  totalUSDGGCCPairAggregate: {
+    totalAmountOneIn: string
+    totalAmountOneOut: string
+    totalAmountZeroIn: string
+    totalAmountZeroOut: string
+  }
+  totalImpactPointsAggregate: {
+    totalImpactPoints: string
+  }
+}
+async function getUniswapAggregatesAndTotalImpactPoints() {
+  const graphqlClient = client
+  const query = gql`
+    {
+      totalGLOWUSDGPairAggregate(id: "1") {
+        totalAmountOneIn
+        totalAmountOneOut
+        totalAmountZeroIn
+        totalAmountZeroOut
+      }
+
+      totalUSDGGCCPairAggregate(id: "1") {
+        totalAmountOneIn
+        totalAmountOneOut
+        totalAmountZeroIn
+        totalAmountZeroOut
+      }
+
+      totalImpactPointsAggregate(id: "1") {
+        totalImpactPoints
+      }
+    }
+  `
+
+  const { data } =
+    await graphqlClient.query<UniswapAggregatesAndImpactPointsSubgraphResponse>(
+      {
+        query,
+      }
+    )
+
+  let totalGlowAmountIn_GLOW_USDGPair = BigInt(0)
+  let totalGlowAmountOut_GLOW_USDGPair = BigInt(0)
+  let totalUSDGAmountIn_GLOW_USDGPair = BigInt(0)
+  let totalUSDGAmountOut_GLOW_USDGPair = BigInt(0)
+
+  let totalGCCAmountIn_USDG_GCCPair = BigInt(0)
+  let totalGCCAmountOut_USDG_GCCPair = BigInt(0)
+  let totalUSDGAmountIn_USDG_GCCPair = BigInt(0)
+  let totalUSDGAmountOut_USDG_GCCPair = BigInt(0)
+
+  let totalImpactPoints = data.totalImpactPointsAggregate.totalImpactPoints
+
+  if (BigInt(addresses.glow) > BigInt(addresses.usdg)) {
+    totalGlowAmountIn_GLOW_USDGPair = BigInt(
+      data.totalGLOWUSDGPairAggregate.totalAmountOneIn
+    )
+    totalGlowAmountOut_GLOW_USDGPair = BigInt(
+      data.totalGLOWUSDGPairAggregate.totalAmountOneOut
+    )
+    totalUSDGAmountIn_GLOW_USDGPair = BigInt(
+      data.totalGLOWUSDGPairAggregate.totalAmountZeroIn
+    )
+    totalUSDGAmountOut_GLOW_USDGPair = BigInt(
+      data.totalGLOWUSDGPairAggregate.totalAmountZeroOut
+    )
+  } else {
+    totalGlowAmountIn_GLOW_USDGPair = BigInt(
+      data.totalGLOWUSDGPairAggregate.totalAmountZeroIn
+    )
+    totalGlowAmountOut_GLOW_USDGPair = BigInt(
+      data.totalGLOWUSDGPairAggregate.totalAmountZeroOut
+    )
+    totalUSDGAmountIn_GLOW_USDGPair = BigInt(
+      data.totalGLOWUSDGPairAggregate.totalAmountOneIn
+    )
+    totalUSDGAmountOut_GLOW_USDGPair = BigInt(
+      data.totalGLOWUSDGPairAggregate.totalAmountOneOut
+    )
+  }
+
+  if (BigInt(addresses.gcc) > BigInt(addresses.usdg)) {
+    totalGCCAmountIn_USDG_GCCPair = BigInt(
+      data.totalUSDGGCCPairAggregate.totalAmountOneIn
+    )
+    totalGCCAmountOut_USDG_GCCPair = BigInt(
+      data.totalUSDGGCCPairAggregate.totalAmountOneOut
+    )
+    totalUSDGAmountIn_USDG_GCCPair = BigInt(
+      data.totalUSDGGCCPairAggregate.totalAmountZeroIn
+    )
+    totalUSDGAmountOut_USDG_GCCPair = BigInt(
+      data.totalUSDGGCCPairAggregate.totalAmountZeroOut
+    )
+  } else {
+    totalGCCAmountIn_USDG_GCCPair = BigInt(
+      data.totalUSDGGCCPairAggregate.totalAmountZeroIn
+    )
+    totalGCCAmountOut_USDG_GCCPair = BigInt(
+      data.totalUSDGGCCPairAggregate.totalAmountZeroOut
+    )
+    totalUSDGAmountIn_USDG_GCCPair = BigInt(
+      data.totalUSDGGCCPairAggregate.totalAmountOneIn
+    )
+    totalUSDGAmountOut_USDG_GCCPair = BigInt(
+      data.totalUSDGGCCPairAggregate.totalAmountOneOut
+    )
+  }
+
+  return {
+    totalGlowAmountIn_GLOW_USDGPair: formatUnits(
+      totalGlowAmountIn_GLOW_USDGPair,
+      18
+    ),
+    totalGlowAmountOut_GLOW_USDGPair: formatUnits(
+      totalGlowAmountOut_GLOW_USDGPair,
+      18
+    ),
+    totalUSDGAmountIn_GLOW_USDGPair: formatUnits(
+      totalUSDGAmountIn_GLOW_USDGPair,
+      6
+    ),
+    totalUSDGAmountOut_GLOW_USDGPair: formatUnits(
+      totalUSDGAmountOut_GLOW_USDGPair,
+      6
+    ),
+    totalGCCAmountIn_USDG_GCCPair: formatUnits(
+      totalGCCAmountIn_USDG_GCCPair,
+      18
+    ),
+    totalGCCAmountOut_USDG_GCCPair: formatUnits(
+      totalGCCAmountOut_USDG_GCCPair,
+      18
+    ),
+    totalUSDGAmountIn_USDG_GCCPair: formatUnits(
+      totalUSDGAmountIn_USDG_GCCPair,
+      6
+    ),
+    totalUSDGAmountOut_USDG_GCCPair: formatUnits(
+      totalUSDGAmountOut_USDG_GCCPair,
+      6
+    ),
+    totalImpactPoints: formatUnits(BigInt(totalImpactPoints), 12),
+  }
+}
 async function getEarlyLiquidityStats(client: PublicClient) {
   const earlyLiquidityContract = {
     address: addresses.earlyLiquidity,
@@ -441,6 +656,18 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     currentPriceEarlyLiquidity,
   } = await getEarlyLiquidityStats(client)
 
+  const {
+    totalGlowAmountIn_GLOW_USDGPair,
+    totalGlowAmountOut_GLOW_USDGPair,
+    totalUSDGAmountIn_GLOW_USDGPair,
+    totalUSDGAmountOut_GLOW_USDGPair,
+    totalGCCAmountIn_USDG_GCCPair,
+    totalGCCAmountOut_USDG_GCCPair,
+    totalUSDGAmountIn_USDG_GCCPair,
+    totalUSDGAmountOut_USDG_GCCPair,
+    totalImpactPoints,
+  } = await getUniswapAggregatesAndTotalImpactPoints()
+
   const props = {
     gccPrice,
     gccLiquidity,
@@ -463,6 +690,15 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     totalRemainingInEarlyLiquidity,
     totalRaisedFromEarlyLiquidity,
     currentPriceEarlyLiquidity,
+    totalGlowAmountIn_GLOW_USDGPair,
+    totalGlowAmountOut_GLOW_USDGPair,
+    totalUSDGAmountIn_GLOW_USDGPair,
+    totalUSDGAmountOut_GLOW_USDGPair,
+    totalGCCAmountIn_USDG_GCCPair,
+    totalGCCAmountOut_USDG_GCCPair,
+    totalUSDGAmountIn_USDG_GCCPair,
+    totalUSDGAmountOut_USDG_GCCPair,
+    totalImpactPoints,
   }
   return {
     props,
@@ -488,4 +724,13 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
   totalSupplyGlowWithoutLockedAmounts: string
   totalSoldInEarlyLiquidity: string
   currentPriceEarlyLiquidity: string
+  totalGlowAmountIn_GLOW_USDGPair: string
+  totalGlowAmountOut_GLOW_USDGPair: string
+  totalUSDGAmountIn_GLOW_USDGPair: string
+  totalUSDGAmountOut_GLOW_USDGPair: string
+  totalGCCAmountIn_USDG_GCCPair: string
+  totalGCCAmountOut_USDG_GCCPair: string
+  totalUSDGAmountIn_USDG_GCCPair: string
+  totalUSDGAmountOut_USDG_GCCPair: string
+  totalImpactPoints: string
 }>
