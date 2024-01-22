@@ -14,6 +14,7 @@ import { computeTotalRaisedFromEarlyLiquidity } from '@/utils/computeTotalRaised
 import { client } from '@/subgraph/client'
 import { gql } from '@apollo/client'
 import { formatNumber } from '@/utils/formatNumber'
+import { earlyLiquidity } from '@/typechain-types/src/testing'
 const minimalPairAbi = [
   'function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)',
 ]
@@ -101,6 +102,7 @@ const Internal = ({
   totalUSDGAmountIn_USDG_GCCPair,
   totalUSDGAmountOut_USDG_GCCPair,
   totalImpactPoints,
+  earlyLiquidityPaymentsPerWeeks,
 }: InferGetStaticPropsType<typeof getStaticProps>) => {
   const gccStats = [
     {
@@ -187,6 +189,14 @@ const Internal = ({
     },
   ]
 
+  const earlyLiquidityWeeklyPaymentsObjects =
+    earlyLiquidityPaymentsPerWeeks.map((x) => {
+      return {
+        title: `Total Raised From Bonding Curve In Week ${x.id}`,
+        value: formatNumber(x.totalPayments),
+      }
+    })
+
   const earlyLiquidityStats = [
     {
       title: 'Total Sold in Early Liquidity',
@@ -205,6 +215,10 @@ const Internal = ({
       value: formatNumber(currentPriceEarlyLiquidity),
     },
   ]
+
+  for (let i = 0; i < earlyLiquidityWeeklyPaymentsObjects.length; i++) {
+    earlyLiquidityStats.push(earlyLiquidityWeeklyPaymentsObjects[i])
+  }
 
   const glowUniswapStats = [
     {
@@ -440,6 +454,11 @@ type UniswapAggregatesAndImpactPointsSubgraphResponse = {
   totalImpactPointsAggregate: {
     totalImpactPoints: string
   }
+
+  earlyLiquidityPaymentsPerWeeks: {
+    id: string
+    totalPayments: string
+  }[]
 }
 async function getUniswapAggregatesAndTotalImpactPoints() {
   const graphqlClient = client
@@ -461,6 +480,11 @@ async function getUniswapAggregatesAndTotalImpactPoints() {
 
       totalImpactPointsAggregate(id: "1") {
         totalImpactPoints
+      }
+
+      earlyLiquidityPaymentsPerWeeks(first: 100) {
+        id
+        totalPayments
       }
     }
   `
@@ -574,6 +598,14 @@ async function getUniswapAggregatesAndTotalImpactPoints() {
       6
     ),
     totalImpactPoints: formatUnits(BigInt(totalImpactPoints), 12),
+    earlyLiquidityPaymentsPerWeeks: data.earlyLiquidityPaymentsPerWeeks.map(
+      (x) => {
+        return {
+          id: x.id,
+          totalPayments: formatUnits(BigInt(x.totalPayments), 6),
+        }
+      }
+    ),
   }
 }
 async function getEarlyLiquidityStats(client: PublicClient) {
@@ -666,6 +698,7 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     totalUSDGAmountIn_USDG_GCCPair,
     totalUSDGAmountOut_USDG_GCCPair,
     totalImpactPoints,
+    earlyLiquidityPaymentsPerWeeks,
   } = await getUniswapAggregatesAndTotalImpactPoints()
 
   const props = {
@@ -699,6 +732,7 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     totalUSDGAmountIn_USDG_GCCPair,
     totalUSDGAmountOut_USDG_GCCPair,
     totalImpactPoints,
+    earlyLiquidityPaymentsPerWeeks,
   }
   return {
     props,
@@ -733,4 +767,8 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
   totalUSDGAmountIn_USDG_GCCPair: string
   totalUSDGAmountOut_USDG_GCCPair: string
   totalImpactPoints: string
+  earlyLiquidityPaymentsPerWeeks: {
+    id: string
+    totalPayments: string
+  }[]
 }>

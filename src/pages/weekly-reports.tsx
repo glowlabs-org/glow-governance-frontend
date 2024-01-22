@@ -374,6 +374,13 @@ export default function Output() {
       //Get the condensed data for the current week from [0, currentSlot]
       const impactPoints: number[] = []
       const powerOutputs: number[] = []
+      const { carbonCreditsProduced } =
+        getCondensedDataFromImpactPointsAndPowerOutputs(
+          device.ImpactRates,
+          device.PowerOutputs
+        ) //The carbon credits rae not rolling, so we only choose this week
+
+      // const powerOutout = calculateCreditsFromImpactPointsAndPowerOutput(device.ImpactRates, device.PowerOutputs)
       for (let i = 0; i <= currentSlot; ++i) {
         impactPoints.push(device.ImpactRates[i])
         powerOutputs.push(device.PowerOutputs[i])
@@ -401,10 +408,11 @@ export default function Output() {
         glowRewardsForFarm =
           (glowReward.glowWeight * totalGlowRewardsForWeek()) / totalGlowWeight
       }
+      //Also set
 
       currentWeekFarmsRollingImpactPointsMap.set(pubKey, {
         rollingImpactPoints: condensedData.rollingImpactPoints,
-        carbonCreditsProduced: condensedData.carbonCreditsProduced,
+        carbonCreditsProduced: carbonCreditsProduced, //! Only for this week
         powerOutput: sumOfThisWeeksPowerOutput,
         glowRewards: glowRewardsForFarm,
       })

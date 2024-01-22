@@ -196,10 +196,10 @@ async function getAllProposalStatuses(): Promise<GetAllStatusesResponse> {
         return 'NONE'
       }
       if (res === 1) {
-        return 'EXECUTED SUCCESFULLY'
+        return 'EXECUTED WITH ERRROR'
       }
       if (res === 2) {
-        return 'EXECUTED WITH ERRROR'
+        return 'EXECUTED SUCCESFULLY'
       }
       if (res === 3) {
         return 'VETOED'
