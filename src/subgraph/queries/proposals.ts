@@ -79,8 +79,11 @@ export const findProposalsDash = async (): Promise<ProposalDashResponse> => {
         status = 'Vetoed'
       }
 
-      if (needsRatification(proposal.proposalType)) {
+      const _needsRatification = needsRatification(proposal.proposalType)
+      if (_needsRatification) {
         status = 'Open For Ratification'
+      } else {
+        status = 'Awaiting Execution'
       }
       const proposalTimestamp = parseInt(proposal.blockTimestamp)
       //TODO: Check on-chain if the proposal has been executed

@@ -18,3 +18,7 @@ export type EquipmentDetails = {
   ProtocolFee: number
   Signature: number[]
 }
+
+export type EquipmentDetailsAndShortId = EquipmentDetails & {
+  shortId: string
+}

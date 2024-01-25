@@ -15,6 +15,7 @@ import { client } from '@/subgraph/client'
 import { gql } from '@apollo/client'
 import { formatNumber } from '@/utils/formatNumber'
 import { earlyLiquidity } from '@/typechain-types/src/testing'
+import { GenericTable } from '@/components/GenericTable/GenericTable'
 const minimalPairAbi = [
   'function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)',
 ]
@@ -103,6 +104,7 @@ const Internal = ({
   totalUSDGAmountOut_USDG_GCCPair,
   totalImpactPoints,
   earlyLiquidityPaymentsPerWeeks,
+  protocolFeePaymentsPerWeeks,
 }: InferGetStaticPropsType<typeof getStaticProps>) => {
   const gccStats = [
     {
@@ -189,13 +191,74 @@ const Internal = ({
     },
   ]
 
+  const tabelLables = [
+    'Week',
+    'Early Liquidity Payments',
+    'Protocol Fee Payments',
+    'Total Payments',
+  ]
+  const tableData: (string | number)[][] = []
+  const alreadyPushedProtocolFeePayments = new Map<string, boolean>()
+  for (let i = 0; i < earlyLiquidityPaymentsPerWeeks.length; i++) {
+    const week = earlyLiquidityPaymentsPerWeeks[i]
+    //Add the matching id only if exists
+    const protocolFeePayment = protocolFeePaymentsPerWeeks.find(
+      (x) => x.id === week.id
+    )
+    if (protocolFeePayment) {
+      tableData.push([
+        week.id,
+        formatNumber(week.totalPayments),
+        formatNumber(protocolFeePayment.totalPayments),
+        formatNumber(
+          Number(week.totalPayments) + Number(protocolFeePayment.totalPayments)
+        ),
+      ])
+      alreadyPushedProtocolFeePayments.set(week.id, true)
+    } else {
+      tableData.push([
+        week.id,
+        formatNumber(week.totalPayments),
+        0,
+        formatNumber(Number(week.totalPayments)),
+      ])
+    }
+  }
+
+  //Push any protocol fee payments that were not pushed
+  for (let i = 0; i < protocolFeePaymentsPerWeeks.length; i++) {
+    const week = protocolFeePaymentsPerWeeks[i]
+    if (!alreadyPushedProtocolFeePayments.has(week.id)) {
+      tableData.push([
+        week.id,
+        0,
+        week.totalPayments,
+        Number(week.totalPayments),
+      ])
+    }
+  }
+  //Sort by week number
+  tableData.sort((a, b) => {
+    return Number(a[0]) - Number(b[0])
+  })
   const earlyLiquidityWeeklyPaymentsObjects =
     earlyLiquidityPaymentsPerWeeks.map((x) => {
       return {
         title: `Total Raised From Bonding Curve In Week ${x.id}`,
         value: formatNumber(x.totalPayments),
+        id: x.id,
       }
     })
+
+  const protocolFeeWeeklyPaymentsObjects = protocolFeePaymentsPerWeeks.map(
+    (x) => {
+      return {
+        title: `Total Raised From Protocol Fees In Week ${x.id}`,
+        value: formatNumber(x.totalPayments),
+        id: x.id,
+      }
+    }
+  )
 
   const earlyLiquidityStats = [
     {
@@ -215,10 +278,6 @@ const Internal = ({
       value: formatNumber(currentPriceEarlyLiquidity),
     },
   ]
-
-  for (let i = 0; i < earlyLiquidityWeeklyPaymentsObjects.length; i++) {
-    earlyLiquidityStats.push(earlyLiquidityWeeklyPaymentsObjects[i])
-  }
 
   const glowUniswapStats = [
     {
@@ -270,6 +329,13 @@ const Internal = ({
       <StatSection title="GCC Stats" stats={gccStats} />
       <StatSection title="Glow Stats" stats={glowStats} />
       <StatSection title="Early Liquidity Stats" stats={earlyLiquidityStats} />
+      <div className="max-w-[95%] mx-auto">
+        <GenericTable
+          labels={tabelLables}
+          tableCaption="Farm Rewards"
+          values={tableData}
+        />
+      </div>
       <StatSection title="GCC Uniswap Stats" stats={gccUniswapStats} />
       <StatSection title="Glow Uniswap Stats" stats={glowUniswapStats} />
       <StatSection title="Impact Points Stats" stats={impactPointsStats} />
@@ -459,6 +525,11 @@ type UniswapAggregatesAndImpactPointsSubgraphResponse = {
     id: string
     totalPayments: string
   }[]
+
+  protocolFeePaymentsPerWeeks: {
+    id: string
+    totalPayments: string
+  }[]
 }
 async function getUniswapAggregatesAndTotalImpactPoints() {
   const graphqlClient = client
@@ -482,7 +553,20 @@ async function getUniswapAggregatesAndTotalImpactPoints() {
         totalImpactPoints
       }
 
-      earlyLiquidityPaymentsPerWeeks(first: 100) {
+      earlyLiquidityPaymentsPerWeeks(
+        first: 100
+        orderBy: id
+        orderDirection: asc
+      ) {
+        id
+        totalPayments
+      }
+
+      protocolFeePaymentsPerWeeks(
+        first: 100
+        orderBy: id
+        orderDirection: asc
+      ) {
         id
         totalPayments
       }
@@ -606,6 +690,12 @@ async function getUniswapAggregatesAndTotalImpactPoints() {
         }
       }
     ),
+    protocolFeePaymentsPerWeeks: data.protocolFeePaymentsPerWeeks.map((x) => {
+      return {
+        id: x.id,
+        totalPayments: formatUnits(BigInt(x.totalPayments), 6),
+      }
+    }),
   }
 }
 async function getEarlyLiquidityStats(client: PublicClient) {
@@ -699,6 +789,7 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     totalUSDGAmountOut_USDG_GCCPair,
     totalImpactPoints,
     earlyLiquidityPaymentsPerWeeks,
+    protocolFeePaymentsPerWeeks,
   } = await getUniswapAggregatesAndTotalImpactPoints()
 
   const props = {
@@ -733,6 +824,7 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     totalUSDGAmountOut_USDG_GCCPair,
     totalImpactPoints,
     earlyLiquidityPaymentsPerWeeks,
+    protocolFeePaymentsPerWeeks,
   }
   return {
     props,
@@ -768,6 +860,10 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
   totalUSDGAmountOut_USDG_GCCPair: string
   totalImpactPoints: string
   earlyLiquidityPaymentsPerWeeks: {
+    id: string
+    totalPayments: string
+  }[]
+  protocolFeePaymentsPerWeeks: {
     id: string
     totalPayments: string
   }[]

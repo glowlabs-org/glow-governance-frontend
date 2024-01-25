@@ -279,6 +279,7 @@ export default function Component({ rawJWT }: { rawJWT: string }) {
       }
     )
 
+    //[address, glowWeight, usdcWeight]
     const leafType = ['address', 'uint256', 'uint256']
     const leaves = unhashedLeaves.map((d) => {
       const values = [d.address, d.glowWeight, d.usdcWeight]

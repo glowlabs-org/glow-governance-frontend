@@ -1,6 +1,7 @@
 import { PROXY_URL } from '@/constants/proxy-url'
 import {
   EquipmentDetails,
+  EquipmentDetailsAndShortId,
   GCAEquipmentResponse,
 } from '@/types/GCAEquipmentResponse'
 import { GCAServerResponse } from '@/types/GCAServerResponse'
@@ -15,6 +16,7 @@ export type ServerDataResponse = {
   impactRate: number
   credits: number
   glowWeight: number
+  shortId: string
 }
 
 export async function getServerDataForFarmAndWeights(
@@ -40,11 +42,12 @@ export async function getServerDataForFarmAndWeights(
 
   // const responseMap = new Map<ServerDataResponse & { glowWeight: string }>()
   const equipmentData = (await equipmentDataRes.json()) as GCAEquipmentResponse
-  const equipmentDataMap = new Map<string, EquipmentDetails>()
+  const equipmentDataMap = new Map<string, EquipmentDetailsAndShortId>()
   const equipmentDetailsKeys = Object.keys(equipmentData.EquipmentDetails)
   for (let i = 0; i < equipmentDetailsKeys.length; i++) {
+    const shortId = equipmentDetailsKeys[i]
     const key = equipmentDetailsKeys[i]
-    const value = equipmentData.EquipmentDetails[key]
+    const value = { ...equipmentData.EquipmentDetails[key], shortId }
     if (value) {
       equipmentDataMap.set(farmPubKeyToId(value.PublicKey), value)
     }
@@ -85,12 +88,18 @@ export async function getServerDataForFarmAndWeights(
     // console.log('------------------')
     // console.log('pubkey', farmPubKeyToId(device.PublicKey))
     // console.log(powerOutputsSum, impactRatesSum)
+    const shortId = equipmentDetails?.shortId
+    if (!shortId) {
+      console.log('shortId not found for ', device.PublicKey)
+      throw new Error('shortId not found for ' + device.PublicKey)
+    }
     return {
       device: farmPubKeyToId(device.PublicKey),
       powerOutput: powerOutputsSum,
       impactRate: impactRatesSum,
       credits: credits,
       glowWeight: glowWeight,
+      shortId: equipmentDetails!.shortId,
     }
   })
 
@@ -114,6 +123,7 @@ export async function getServerDataForFarmAndWeights(
         impactRate: 0,
         credits: 0,
         glowWeight: glowWeight,
+        shortId: equipmentDetails.shortId,
       })
     }
   }
