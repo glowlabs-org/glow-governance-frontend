@@ -124,6 +124,8 @@ function getCondensedDataFromImpactPointsAndPowerOutputs(
   impactRatess: number[],
   powerOutputs: number[]
 ): CondensedFarmData {
+  // console.log(length)
+  console.log('impactRatess', impactRatess.length)
   if (impactRatess.length !== powerOutputs.length)
     throw new Error('Impact rates and power outputs must be the same length')
   let sumOfImpactPoints = 0 //val

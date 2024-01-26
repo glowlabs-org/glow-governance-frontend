@@ -32,15 +32,15 @@ const ImpactLeaderboard = ({
   return (
     <main className="container">
       <div className="mx-auto py-12">
-        <h1 className="font-bold text-4xl mb-4">Impact Point Leaderboard</h1>
+        <h1 className="font-bold text-4xl mb-4">Impact Power Leaderboard</h1>
         <h2>Showing {leaderboard.length} results</h2>
         <Table className="bg-white rounded-lg ">
-          <TableCaption>Impact Points Leaderboard</TableCaption>
+          <TableCaption>Impact Power Leaderboard</TableCaption>
           <TableHeader>
             <TableRow className="px-4">
               <TableHead>Ranking</TableHead>
               <TableHead>User</TableHead>
-              <TableHead>Impact Points</TableHead>
+              <TableHead>Impact Power</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

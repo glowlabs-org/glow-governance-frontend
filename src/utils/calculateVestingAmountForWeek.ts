@@ -26,7 +26,8 @@ export function calculateVestingAmountForWeek({
   if (weeksPassed >= vestingOffset + totalVestingWeeks) {
     return 0
   }
-  const perWeekAmount = totalVestingAmount / totalVestingWeeks
+  /// @dev The glow is stored in 2 decimals of precision in the protocol fee field
+  const perWeekAmount = totalVestingAmount / 1e2 / totalVestingWeeks
   const vestingAmount = perWeekAmount
   return vestingAmount
 }

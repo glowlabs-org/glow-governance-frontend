@@ -30,7 +30,7 @@ const links = [
   {
     name: 'Impact Leaderboard',
     href: '/impact-leaderboard',
-    description: 'The impact poinsts leaderboard',
+    description: 'The impact power leaderboard',
   },
   {
     name: 'Rewards',
