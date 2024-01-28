@@ -103,6 +103,9 @@ const Internal = ({
   totalUSDGAmountIn_USDG_GCCPair,
   totalUSDGAmountOut_USDG_GCCPair,
   totalImpactPoints,
+  totalGCC_Committed,
+  totalUSDC_Committed,
+  totalUSDC_Value,
   earlyLiquidityPaymentsPerWeeks,
   protocolFeePaymentsPerWeeks,
 }: InferGetStaticPropsType<typeof getStaticProps>) => {
@@ -232,15 +235,33 @@ const Internal = ({
       tableData.push([
         week.id,
         0,
-        week.totalPayments,
-        Number(week.totalPayments),
+        formatNumber(week.totalPayments),
+        formatNumber(Number(week.totalPayments)),
       ])
     }
   }
+
   //Sort by week number
   tableData.sort((a, b) => {
     return Number(a[0]) - Number(b[0])
   })
+  //Find the missing weeks,  in table data and add them
+  const mostRecentWeekInTableData = Number(tableData[tableData.length - 1][0])
+  //Loop over 0->mostRecentWeekInTableData and add any missing weeks if they're not in the tableData
+  for (let i = 0; i <= mostRecentWeekInTableData; i++) {
+    const week = i.toString()
+    if (!tableData.find((x) => x[0] === week)) {
+      tableData.push([week, 0, 0, 0])
+    }
+  }
+  //Sort agian by week number
+  tableData.sort((a, b) => {
+    return Number(a[0]) - Number(b[0])
+  })
+
+  //Reverse sort to show most recent week first
+  tableData.reverse()
+
   const earlyLiquidityWeeklyPaymentsObjects =
     earlyLiquidityPaymentsPerWeeks.map((x) => {
       return {
@@ -319,8 +340,20 @@ const Internal = ({
 
   const impactPointsStats = [
     {
-      title: 'Total Impact Points',
+      title: 'Total Impact Power',
       value: formatNumber(totalImpactPoints),
+    },
+    {
+      title: 'Total GCC Committed',
+      value: formatNumber(totalGCC_Committed, 10),
+    },
+    {
+      title: 'Total USDC Committed (Total USDC Retired)',
+      value: formatNumber(totalUSDC_Committed),
+    },
+    {
+      title: 'Total USDC Value (Total USDC Including Amount In Swaps and LP)',
+      value: formatNumber(totalUSDC_Value),
     },
   ]
 
@@ -338,7 +371,7 @@ const Internal = ({
       </div>
       <StatSection title="GCC Uniswap Stats" stats={gccUniswapStats} />
       <StatSection title="Glow Uniswap Stats" stats={glowUniswapStats} />
-      <StatSection title="Impact Points Stats" stats={impactPointsStats} />
+      <StatSection title="Impact Power Stats" stats={impactPointsStats} />
     </div>
   )
 }
@@ -519,6 +552,9 @@ type UniswapAggregatesAndImpactPointsSubgraphResponse = {
   }
   totalImpactPointsAggregate: {
     totalImpactPoints: string
+    totalUSDC_Value: string
+    totalGCC_Committed: string
+    totalUSDC_Committed: string
   }
 
   earlyLiquidityPaymentsPerWeeks: {
@@ -551,6 +587,9 @@ async function getUniswapAggregatesAndTotalImpactPoints() {
 
       totalImpactPointsAggregate(id: "1") {
         totalImpactPoints
+        totalUSDC_Value
+        totalGCC_Committed
+        totalUSDC_Committed
       }
 
       earlyLiquidityPaymentsPerWeeks(
@@ -682,6 +721,19 @@ async function getUniswapAggregatesAndTotalImpactPoints() {
       6
     ),
     totalImpactPoints: formatUnits(BigInt(totalImpactPoints), 12),
+    totalGCC_Committed: formatUnits(
+      BigInt(data.totalImpactPointsAggregate.totalGCC_Committed),
+      18
+    ),
+    totalUSDC_Committed: formatUnits(
+      BigInt(data.totalImpactPointsAggregate.totalUSDC_Committed),
+      6
+    ),
+    totalUSDC_Value: formatUnits(
+      BigInt(data.totalImpactPointsAggregate.totalUSDC_Value),
+      6
+    ),
+
     earlyLiquidityPaymentsPerWeeks: data.earlyLiquidityPaymentsPerWeeks.map(
       (x) => {
         return {
@@ -788,6 +840,9 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     totalUSDGAmountIn_USDG_GCCPair,
     totalUSDGAmountOut_USDG_GCCPair,
     totalImpactPoints,
+    totalGCC_Committed,
+    totalUSDC_Committed,
+    totalUSDC_Value,
     earlyLiquidityPaymentsPerWeeks,
     protocolFeePaymentsPerWeeks,
   } = await getUniswapAggregatesAndTotalImpactPoints()
@@ -823,6 +878,9 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     totalUSDGAmountIn_USDG_GCCPair,
     totalUSDGAmountOut_USDG_GCCPair,
     totalImpactPoints,
+    totalGCC_Committed,
+    totalUSDC_Committed,
+    totalUSDC_Value,
     earlyLiquidityPaymentsPerWeeks,
     protocolFeePaymentsPerWeeks,
   }
@@ -859,6 +917,9 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
   totalUSDGAmountIn_USDG_GCCPair: string
   totalUSDGAmountOut_USDG_GCCPair: string
   totalImpactPoints: string
+  totalGCC_Committed: string
+  totalUSDC_Committed: string
+  totalUSDC_Value: string
   earlyLiquidityPaymentsPerWeeks: {
     id: string
     totalPayments: string

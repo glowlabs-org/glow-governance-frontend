@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import keccak256 from 'keccak256'
 
 import React from 'react'
 
@@ -16,6 +17,7 @@ export type GenericTableProps = {
   values: (string | number)[][]
 }
 export const GenericTable = (args: GenericTableProps) => {
+  const valuesHash = keccak256(JSON.stringify(args.values)).toString('hex')
   return (
     <Table className="bg-white rounded-lg">
       <TableCaption>{args.tableCaption}</TableCaption>
@@ -28,7 +30,7 @@ export const GenericTable = (args: GenericTableProps) => {
       </TableHeader>
       <TableBody>
         {args.values.map((row) => (
-          <TableRow key={row[0]}>
+          <TableRow key={valuesHash + row[0]}>
             {row.map((cell) => (
               <TableCell key={cell}>{cell}</TableCell>
             ))}

@@ -12,3 +12,5 @@ if (!NEXT_PUBLIC_GCA_API_URL) {
 export const API_URL = NEXT_PUBLIC_GCA_API_URL
 // export const API_URL = 'http://0.0.0.0:8787'
 //
+
+export const RUST_URL = 'https://fun-rust-production.up.railway.app'

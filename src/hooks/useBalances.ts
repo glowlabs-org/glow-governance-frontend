@@ -6,6 +6,7 @@ import { ethers } from 'ethers'
 import { BalancesContext } from '@/contexts/BalanceProvider'
 
 export const useBalancesCore = () => {
+
   const { address } = useAccount()
   const { glow, gcc, governance, usdg, usdc } = useContracts()
   const [glowBalance, setGlowBalance] = useState<string>('')

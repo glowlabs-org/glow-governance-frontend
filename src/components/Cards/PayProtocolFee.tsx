@@ -18,6 +18,8 @@ import { useContracts } from '@/hooks/useContracts'
 import { useAccount } from 'wagmi'
 import { useState } from 'react'
 import { usePayProtocolFee } from '@/hooks/usePayProtocolFee'
+
+
 export function PayProtocolFee() {
   const { payProtocolFee, loading } = usePayProtocolFee()
   const { address } = useAccount()
