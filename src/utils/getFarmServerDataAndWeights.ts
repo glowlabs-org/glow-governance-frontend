@@ -68,8 +68,6 @@ export async function getServerDataForFarmAndWeights(
   // console.log('full url = ', fullUrl)
   // console.log({ data })
   // console.log({ data })
-  //TODO: calculate impact points the same way that /src/output.tsx does with the multiplier
-  //TODO: refactor a getServerData so we can reuse it in the gca page
   const serverData: ServerDataResponse[] = data.Devices.map((device, index) => {
     const { credits, powerOutputsSum, impactRatesSum } = calculateCredits(
       device.PowerOutputs,
