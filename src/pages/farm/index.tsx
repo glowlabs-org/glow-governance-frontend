@@ -30,6 +30,10 @@ import { BigNumber, ethers } from 'ethers'
 import { addresses } from '@/constants/addresses'
 import keccak256 from 'keccak256'
 import MerkleTree from 'merkletreejs'
+import { getAddress, isAddress } from 'viem'
+import { Input } from '@/components/ui/input'
+import { useAccount } from 'wagmi'
+import { BucketSubmission } from '@/typechain-types'
 
 type GetFarmFromApiQueryResponse = {
   id: string
@@ -62,38 +66,23 @@ async function getFarmFromAPI(
 const weeksArray = Array.from(Array(getProtocolWeek()).keys())
 const Farm = () => {
   const { query } = useRouter()
-  const { payoutWallet } = query as { payoutWallet: string }
-  const [queryInfo] = useQueries({
-    queries: [
-      {
-        enabled: !!payoutWallet,
-        refetchInterval: false,
-        refetchOnMount: false,
-        queryKey: ['farm', payoutWallet],
-        queryFn: () => getFarmFromAPI(payoutWallet),
-      },
-    ],
-  })
-  const { minerPoolAndGCA, governance } = useContracts()
+  const { address: payoutWallet } = useAccount()
+  // const payoutWallet = '0xCB0695C5e231D04a36feb07841e26D44e6D08c9d'
+  const gcaWalletAddress = '0xB2d687b199ee40e6113CD490455cC81eC325C496'
+  // const [queryInfo] = useQueries({
+  //   queries: [
+  //     {
+  //       enabled: payoutWallet && isAddress(payoutWallet),
+  //       refetchInterval: false,
+  //       refetchOnMount: false,
+  //       queryKey: ['farm', payoutWallet],
+  //       queryFn: () => getFarmFromAPI(payoutWallet!),
+  //     },
+  //   ],
+  // })
+  const { minerPoolAndGCA } = useContracts()
   const [multicallBucketResults, setMulticallBucketResults] =
     useState<BucketCallResult[]>()
-
-  async function getReportForWeek(weekNumber: number) {
-    if (!minerPoolAndGCA) return
-    const gcaWalletAddress = queryInfo.data?.gcaWalletAddress
-    if (!gcaWalletAddress) return
-    const bucket = await minerPoolAndGCA.bucket(weekNumber)
-    const { finalizationTimestamp, lastUpdatedNonce, originalNonce } = bucket
-    const { reports } = bucket
-    const reportOfGCA = reports.find(
-      (report) =>
-        report.proposingAgent.toLowerCase() === gcaWalletAddress.toLowerCase()
-    )
-
-    if (!reportOfGCA) return
-    console.log({ reportOfGCA })
-    return reportOfGCA
-  }
 
   async function getReportForWeeksMulticall() {
     if (typeof window === 'undefined') return
@@ -107,10 +96,11 @@ const Farm = () => {
       minerPoolAndGCAAbi
     )
 
-    const calls = weeksArray.map((weekNumber) => {
+    const calls = weeksArray.slice(9).map((weekNumber) => {
       return minerPoolMulticallContract.bucket(weekNumber)
     })
     const results = (await MulticallProvider.all(calls)) as BucketCallResult[]
+    console.log({ results })
     setMulticallBucketResults(results)
     return results
   }
@@ -119,53 +109,55 @@ const Farm = () => {
     getReportForWeeksMulticall()
   }, [minerPoolAndGCA])
 
-  if (queryInfo.isLoading)
-    return <div className="container mx-auto">Loading...</div>
+  // if (queryInfo.isLoading)
+  //   return <div className="container mx-auto">Loading...</div>
 
   return (
     <div className="container mx-auto">
       <h1 className="text-3xl font-bold">Farm</h1>
       <div className="mt-4">
         <div className="font-bold">Name</div>
-        <div>{queryInfo.data?.name}</div>
+        {/* <div>{queryInfo.data?.name}</div> */}
       </div>
       <div className="mt-4">
         <div className="font-bold">Payout Wallet</div>
-        <div>{queryInfo.data?.payoutWallet}</div>
+        <div>{payoutWallet}</div>
       </div>
       <div className="mt-4">
         <div className="font-bold">GCA Wallet Address</div>
-        <div>{queryInfo.data?.gcaWalletAddress}</div>
+        <div>{gcaWalletAddress}</div>
       </div>
-
-      <Table className="bg-white mt-12 rounded-lg">
-        <TableCaption>Payouts</TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Week</TableHead>
-            <TableHead>Already Claimed</TableHead>
-            <TableHead>More Information</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {multicallBucketResults?.map((week, index) => {
-            return (
-              <TableRow key={index}>
-                <TableCell>{index}</TableCell>
-                <TableCell>0</TableCell>
-                <TableCell>
-                  <MoreInfoButton
-                    bucket={week}
-                    gcaWalletAddress={queryInfo.data?.gcaWalletAddress || ''}
-                    bucketNumber={index}
-                    payoutWallet={payoutWallet}
-                  />
-                </TableCell>
-              </TableRow>
-            )
-          })}
-        </TableBody>
-      </Table>
+      {!payoutWallet && <Button>Make sure to connect your wallet</Button>}
+      {payoutWallet && (
+        <Table className="bg-white mt-12 rounded-lg">
+          <TableCaption>Payouts</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Week</TableHead>
+              <TableHead>Already Claimed</TableHead>
+              <TableHead>More Information</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {multicallBucketResults?.map((week, index) => {
+              return (
+                <TableRow key={index}>
+                  <TableCell>{index + 9}</TableCell>
+                  <TableCell>0</TableCell>
+                  <TableCell>
+                    <MoreInfoButton
+                      bucket={week}
+                      gcaWalletAddress={gcaWalletAddress}
+                      bucketNumber={index + 9}
+                      payoutWallet={payoutWallet || ''}
+                    />
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+      )}
     </div>
   )
 }
@@ -184,17 +176,36 @@ type GetMerkleTreeFromRootSingle = {
   glowWeight: string
   usdcWeight: string
 }
-async function getMerkleTreeFromRoot(merkleRoot: string) {
-  const url = `${API_URL}/reports/getReportByRoot?merkleRoot=${merkleRoot}`
+
+async function getMerkleTreeFromRoot(
+  gca: string,
+  weekNumber: number,
+  merkleRoot: string,
+  payoutWallet: string,
+  bucketCall: BucketCallResult
+) {
+  // const url = `${API_URL}/farm/merkleTree?merkleRoot=${merkleRoot}`
+  const url = `https://glow-merkle-trees.s3.amazonaws.com/${getAddress(
+    gca
+  )}/${weekNumber}/${merkleRoot}.json`
   const res = await fetch(url)
-  const data = await res.json()
+  const merkleTree = (await res.json()) as GetMerkleTreeFromRootSingle[]
 
-  const merkleTreeUrl = data.merkleTreeUrl as string
-  const merkleTreeRes = await fetch(merkleTreeUrl)
-  const merkleTreeData = await merkleTreeRes.json()
-  const merkleTree = merkleTreeData as GetMerkleTreeFromRootSingle[]
+  const leafGlowWeightStr = merkleTree.find(
+    (leaf) => leaf.address.toLowerCase() === payoutWallet.toLowerCase()
+  )?.glowWeight
+  const leafUsdcWeightStr = merkleTree.find(
+    (leaf) => leaf.address.toLowerCase() === payoutWallet.toLowerCase()
+  )?.usdcWeight
 
-  return merkleTree
+  const leafGlowWeight = BigInt(leafGlowWeightStr || '0')
+  const leafUsdcWeight = BigInt(leafUsdcWeightStr || '0')
+  console.log({ leafGlowWeight, leafUsdcWeight })
+  return {
+    merkleTree,
+    leafGlowWeight,
+    leafUsdcWeight,
+  }
 }
 export function MoreInfoButton({
   bucket,
@@ -203,22 +214,41 @@ export function MoreInfoButton({
   payoutWallet,
 }: MoreInfoButtonProps) {
   const data = bucket
-  const { minerPoolAndGCA, governance } = useContracts()
+  const { minerPoolAndGCA } = useContracts()
+  const [rewards, setRewards] =
+    useState<BucketSubmission.WeeklyRewardStructOutput>()
+
+  useEffect(() => {
+    async function getRewards() {
+      if (!minerPoolAndGCA) return
+      const rewards = await minerPoolAndGCA.reward(bucketNumber)
+      setRewards(rewards)
+    }
+    getRewards()
+  }, [minerPoolAndGCA])
   const bucketOfGCA = data.reports.find(
     (report) =>
       report.proposingAgent.toLowerCase() === gcaWalletAddress.toLowerCase()
   )
+  if (!bucketOfGCA) return <Button>N/A</Button>
 
   if (!bucketOfGCA) return <Button>N/A</Button>
   const [merkleTreeQuery] = useQueries({
     queries: [
       {
-        enabled: !!data && !!bucketOfGCA,
+        enabled: !!data && !!bucketOfGCA && isAddress(gcaWalletAddress),
         refetchInterval: false,
         refetchOnMount: false,
         staleTime: Infinity,
         queryKey: ['merkleTree', bucketOfGCA!.merkleRoot],
-        queryFn: () => getMerkleTreeFromRoot(bucketOfGCA!.merkleRoot),
+        queryFn: () =>
+          getMerkleTreeFromRoot(
+            gcaWalletAddress,
+            bucketNumber,
+            bucketOfGCA!.merkleRoot,
+            payoutWallet,
+            data
+          ),
       },
     ],
   })
@@ -235,7 +265,7 @@ export function MoreInfoButton({
     )
 
     console.log({ payoutWallet })
-    const leafForPayoutWallet = merkleTreeQuery.data.find(
+    const leafForPayoutWallet = merkleTreeQuery.data.merkleTree.find(
       (leaf) => leaf.address.toLowerCase() == payoutWallet.toLowerCase()
     )
     const { address, glowWeight, usdcWeight } = leafForPayoutWallet!
@@ -247,7 +277,7 @@ export function MoreInfoButton({
       glowWeight,
       usdcWeight,
     ])
-    const leaves = merkleTreeQuery.data.map((leaf) => {
+    const leaves = merkleTreeQuery.data.merkleTree.map((leaf) => {
       const values = [leaf.address, leaf.glowWeight, leaf.usdcWeight]
       const hash = ethers.utils.solidityKeccak256(leafType, values)
       return hash
@@ -296,6 +326,15 @@ export function MoreInfoButton({
     await tx.wait()
   }
 
+  if (!merkleTreeQuery.data || !rewards) return <Button>Not Ready</Button>
+  //If the weights are 0 in the merkle tree, then the user is not in the merkle tree
+  if (
+    merkleTreeQuery.data.leafGlowWeight === BigInt(0) &&
+    merkleTreeQuery.data.leafUsdcWeight === BigInt(0)
+  ) {
+    return <Button>No Rewards For You</Button>
+  }
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -341,6 +380,22 @@ export function MoreInfoButton({
                   <div className="font-bold">Total New GCC</div>
                   <div>
                     {ethers.utils.formatEther(report.totalNewGCC.toString())}
+                  </div>
+                  <div className="font-bold">Glow Rewards</div>
+                  <div>
+                    {(
+                      (merkleTreeQuery.data?.leafGlowWeight! *
+                        BigInt(175_000)) /
+                      report.totalGLWRewardsWeight.toBigInt()
+                    ).toString()}
+                  </div>
+                  <div className="font-bold">USDC Rewards</div>
+                  <div>
+                    {(
+                      (rewards!.amountInBucket.toBigInt() *
+                        report.totalGRCRewardsWeight.toBigInt()) /
+                      (merkleTreeQuery.data?.leafUsdcWeight || BigInt(0))
+                    ).toString()}
                   </div>
                 </div>
               )
