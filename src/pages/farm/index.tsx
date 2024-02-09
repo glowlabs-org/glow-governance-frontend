@@ -67,7 +67,8 @@ const weeksArray = Array.from(Array(getProtocolWeek()).keys())
 const Farm = () => {
   const { query } = useRouter()
   const { address: payoutWallet } = useAccount()
-  // const payoutWallet = '0x2e2771032d119fe590FD65061Ad3B366C8e9B7b9'
+  // const payoutWallet = '0xCB0695C5e231D04a36feb07841e26D44e6D08c9d'
+  const gcaWalletAddress = '0xB2d687b199ee40e6113CD490455cC81eC325C496'
   // const [queryInfo] = useQueries({
   //   queries: [
   //     {
@@ -124,7 +125,7 @@ const Farm = () => {
       </div>
       <div className="mt-4">
         <div className="font-bold">GCA Wallet Address</div>
-        <div>0xB2d687b199ee40e6113CD490455cC81eC325C496</div>
+        <div>{gcaWalletAddress}</div>
       </div>
       {!payoutWallet && <Button>Make sure to connect your wallet</Button>}
       {payoutWallet && (
@@ -146,9 +147,7 @@ const Farm = () => {
                   <TableCell>
                     <MoreInfoButton
                       bucket={week}
-                      gcaWalletAddress={
-                        '0xB2d687b199ee40e6113CD490455cC81eC325C496'
-                      }
+                      gcaWalletAddress={gcaWalletAddress}
                       bucketNumber={index + 9}
                       payoutWallet={payoutWallet || ''}
                     />

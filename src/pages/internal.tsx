@@ -16,9 +16,14 @@ import { gql } from '@apollo/client'
 import { formatNumber } from '@/utils/formatNumber'
 import { earlyLiquidity } from '@/typechain-types/src/testing'
 import { GenericTable } from '@/components/GenericTable/GenericTable'
+import { CarbonCreditDescendingPriceAuctionABI } from '@/constants/abis/CarbonCreditDescendingPriceAuction.abi'
+import { getGlowStats } from '@/utils/web3/getGlowStats'
 const minimalPairAbi = [
   'function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)',
 ]
+const erc20Abi = parseAbi([
+  'function balanceOf(address owner) external view returns (uint256)',
+])
 
 export const UniswapV2PairAbi = parseAbi(minimalPairAbi)
 type GetReservesResponse = [bigint, bigint, number]
@@ -89,7 +94,10 @@ const Internal = ({
   earlyLiquidityGlowBalance,
   grantsTreasuryGlowBalance,
   totalStaked,
-  totalSupplyGlowWithoutLockedAmounts,
+  circulatingSupplyGlow,
+  marketCapGlow,
+  vetoCouncilContractBalance,
+  minerPoolAndGcaContractBalance,
   totalSoldInEarlyLiquidity,
   totalRemainingInEarlyLiquidity,
   totalRaisedFromEarlyLiquidity,
@@ -108,7 +116,18 @@ const Internal = ({
   totalUSDC_Value,
   earlyLiquidityPaymentsPerWeeks,
   protocolFeePaymentsPerWeeks,
+  impactMultiplier,
+  carbonCreditAuctionPrice,
+  totalGCCForSaleInCarbonCreditAuction,
+  totalGCCSoldInCarbonCreditAuction,
+  multisigUSDCBalance,
 }: InferGetStaticPropsType<typeof getStaticProps>) => {
+  const multisigStats = [
+    {
+      title: 'Multisig USDC Balance',
+      value: formatNumber(multisigUSDCBalance),
+    },
+  ]
   const gccStats = [
     {
       title: 'GCC Price',
@@ -130,6 +149,7 @@ const Internal = ({
       title: 'Total Supply of GCC',
       value: formatNumber(totalSupplyGCC),
     },
+
     {
       title: 'GCC Balance in Carbon Credit Auction',
       value: formatNumber(carbonCreditAuctionGCCBalance),
@@ -143,6 +163,21 @@ const Internal = ({
       value: formatNumber(
         Number(totalSupplyGCCWithoutCarbonCreditAuction) * Number(gccPrice)
       ),
+    },
+  ]
+
+  const carbonCreditAuctionStats = [
+    {
+      title: 'Carbon Credit Auction Price',
+      value: formatNumber(carbonCreditAuctionPrice, 4) + ' Glow',
+    },
+    {
+      title: 'Total GCC For Sale in Carbon Credit Auction',
+      value: formatNumber(totalGCCForSaleInCarbonCreditAuction, 10),
+    },
+    {
+      title: 'Total GCC Sold in Carbon Credit Auction',
+      value: formatNumber(totalGCCSoldInCarbonCreditAuction, 10),
     },
   ]
   const glowStats = [
@@ -183,15 +218,35 @@ const Internal = ({
       value: formatNumber(totalStaked),
     },
     {
-      title: 'Total Supply of Glow without Locked Amounts',
-      value: formatNumber(totalSupplyGlowWithoutLockedAmounts),
+      title: 'Circulating Supply of Glow',
+      value: formatNumber(circulatingSupplyGlow),
     },
     {
-      title: 'Glow Market Cap(without Locked Amounts)',
-      value: formatNumber(
-        Number(totalSupplyGlowWithoutLockedAmounts) * Number(glowPrice)
-      ),
+      title: 'Veto Council Contract Balance',
+      value: formatNumber(vetoCouncilContractBalance),
     },
+    {
+      title: 'Miner Pool And GCA Contract Balance',
+      value: formatNumber(minerPoolAndGcaContractBalance),
+    },
+    {
+      title: 'Market Cap(Circulating * Price)',
+      value: formatNumber(marketCapGlow, 2),
+    },
+    // {
+    //   title: 'Total Staked',
+    //   value: formatNumber(totalStaked),
+    // },
+    // {
+    //   title: 'Total Supply of Glow without Locked Amounts',
+    //   value: formatNumber(totalSupplyGlowWithoutLockedAmounts),
+    // },
+    // {
+    //   title: 'Glow Market Cap(without Locked Amounts)',
+    //   value: formatNumber(
+    //     Number(totalSupplyGlowWithoutLockedAmounts) * Number(glowPrice)
+    //   ),
+    // },
   ]
 
   const tabelLables = [
@@ -344,6 +399,10 @@ const Internal = ({
       value: formatNumber(totalImpactPoints),
     },
     {
+      title: 'Impact Multiplier',
+      value: formatNumber(impactMultiplier),
+    },
+    {
       title: 'Total GCC Committed',
       value: formatNumber(totalGCC_Committed, 10),
     },
@@ -360,6 +419,11 @@ const Internal = ({
   return (
     <div>
       <StatSection title="GCC Stats" stats={gccStats} />
+      <StatSection
+        title="Carbon Credit Auction Stats"
+        stats={carbonCreditAuctionStats}
+      />
+      <StatSection title="Multisig Stats" stats={multisigStats} />
       <StatSection title="Glow Stats" stats={glowStats} />
       <StatSection title="Early Liquidity Stats" stats={earlyLiquidityStats} />
       <div className="max-w-[95%] mx-auto">
@@ -377,6 +441,37 @@ const Internal = ({
 }
 
 export default Internal
+
+async function getCarbonCreditAuctionPrice(client: PublicClient) {
+  const unit = BigInt(1000000)
+  const carbonCreditAuctionContract = {
+    address: addresses.carbonCreditAuction,
+    abi: CarbonCreditDescendingPriceAuctionABI,
+  }
+  const currentPrice =
+    ((await client.readContract({
+      ...carbonCreditAuctionContract,
+      functionName: 'getPricePerUnit',
+    })) as bigint) * unit
+
+  const gccForSale =
+    ((await client.readContract({
+      ...carbonCreditAuctionContract,
+      functionName: 'unitsForSale',
+    })) as bigint) * unit
+
+  const totalGCCSold =
+    ((await client.readContract({
+      ...carbonCreditAuctionContract,
+      functionName: 'totalUnitsSold',
+    })) as bigint) * unit
+
+  return {
+    currentPrice: formatUnits(currentPrice, 12),
+    gccForSale: formatUnits(gccForSale, 18),
+    totalGCCSold: formatUnits(totalGCCSold, 18),
+  }
+}
 
 async function getGCCRelatedStats(client: PublicClient) {
   const reservesGCCUSDG = (await client.readContract({
@@ -458,60 +553,32 @@ async function getGlowRelatedStats(client: PublicClient) {
     abi: GCCGuardedLaunchABI,
   }
 
-  const totalSupplyGlow = await client.readContract({
-    ...glowContract,
-    functionName: 'totalSupply',
-  })
+  const {
+    totalSupply: totalSupplyGlow,
+    carbonCreditAuctionBalance: carbonCreditAuctionGlowBalance,
+    earlyLiquidityBalance: earlyLiquidityGlowBalance,
+    grantsContractBalance: grantsTreasuryGlowBalance,
+    glowStakedOrLockedBalance: totalStaked,
+    marketCap: glowMarketCap,
+    circulatingSupply: circulatingSupplyGlow,
+    vetoCouncilContractBalance: vetoCouncilContractBalance,
+    minerPoolAndGcaContractBalance: minerPoolAndGcaContractBalance,
+  } = await getGlowStats(client, glowPrice)
 
-  const carbonCreditAuctionGlowBalance = (await client.readContract({
-    ...glowContract,
-    functionName: 'balanceOf',
-    args: [addresses.carbonCreditAuction],
-  })) as bigint
-
-  const earlyLiquidityGlowBalance = (await client.readContract({
-    ...glowContract,
-    functionName: 'balanceOf',
-    args: [addresses.earlyLiquidity],
-  })) as bigint
-
-  const grantsTreasuryGlowBalance = (await client.readContract({
-    ...glowContract,
-    functionName: 'balanceOf',
-    args: [addresses.grantsTreasury],
-  })) as bigint
-
-  const totalStaked = (await client.readContract({
-    ...glowContract,
-    functionName: 'balanceOf',
-    args: [addresses.glow],
-  })) as bigint
-
-  const totalSupplyGlowWithoutLockedAmounts =
-    totalSupplyGlow -
-    carbonCreditAuctionGlowBalance -
-    earlyLiquidityGlowBalance -
-    grantsTreasuryGlowBalance -
-    totalStaked
-
-  //Return the serialized data
   return {
     glowPrice: glowPrice.toString(),
     glowLiquidity: glowLiquidity.toString(),
     usdgLiquidityGlowPool: usdgLiquidity.toString(),
     totalLiquidityUSDollarsGlowPool: totalLiquidityUSDollars.toString(),
-    totalSupplyGlow: formatUnits(totalSupplyGlow, 18),
-    carbonCreditAuctionGlowBalance: formatUnits(
-      carbonCreditAuctionGlowBalance,
-      18
-    ),
-    earlyLiquidityGlowBalance: formatUnits(earlyLiquidityGlowBalance, 18),
-    grantsTreasuryGlowBalance: formatUnits(grantsTreasuryGlowBalance, 18),
-    totalStaked: formatUnits(totalStaked, 18),
-    totalSupplyGlowWithoutLockedAmounts: formatUnits(
-      totalSupplyGlowWithoutLockedAmounts,
-      18
-    ),
+    totalSupplyGlow: totalSupplyGlow.toString(),
+    carbonCreditAuctionGlowBalance: carbonCreditAuctionGlowBalance.toString(),
+    earlyLiquidityGlowBalance: earlyLiquidityGlowBalance.toString(),
+    grantsTreasuryGlowBalance: grantsTreasuryGlowBalance.toString(),
+    totalStaked: totalStaked.toString(),
+    circulatingSupplyGlow: circulatingSupplyGlow.toString(),
+    vetoCouncilContractBalance: vetoCouncilContractBalance.toString(),
+    minerPoolAndGcaContractBalance: minerPoolAndGcaContractBalance.toString(),
+    marketCapGlow: glowMarketCap.toString(),
   }
 }
 async function getDashboardParams(client: PublicClient) {
@@ -788,6 +855,26 @@ async function getEarlyLiquidityStats(client: PublicClient) {
   }
 }
 
+async function getMultisigStats(client: PublicClient) {
+  const multisigAddress =
+    '0xc5174BBf649a92F9941e981af68AaA14Dd814F85' as `0x${string}`
+  const usdcAddress =
+    '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' as `0x${string}`
+  const usdc = {
+    address: usdcAddress,
+    abi: erc20Abi,
+  }
+
+  const balance = await client.readContract({
+    ...usdc,
+    functionName: 'balanceOf',
+    args: [multisigAddress],
+  })
+  return {
+    multisigUSDCBalance: formatUnits(balance, 6),
+  }
+}
+
 export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
   const transport = http(process.env.PRIVATE_RPC_URL!)
 
@@ -820,7 +907,10 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     earlyLiquidityGlowBalance,
     grantsTreasuryGlowBalance,
     totalStaked,
-    totalSupplyGlowWithoutLockedAmounts,
+    circulatingSupplyGlow,
+    marketCapGlow,
+    vetoCouncilContractBalance,
+    minerPoolAndGcaContractBalance,
   } = await getGlowRelatedStats(client)
 
   const {
@@ -847,6 +937,37 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     protocolFeePaymentsPerWeeks,
   } = await getUniswapAggregatesAndTotalImpactPoints()
 
+  const impactPointsUrl =
+    'https://glow-green-api.simonnfts.workers.dev/estimateUSDC?amountImpactPointsDesired=1000000000000'
+  const response = await fetch(impactPointsUrl)
+  const data = (await response.json()) as {
+    estimate: {
+      amountUSDCNeededNumber: number
+      amountUSDCNeededBigNumber: string
+      expectedImpactPointsBigNumber: string
+      expectedImpactPointsNumber: number
+    }
+  }
+
+  //impactMultiplier =  ($total_protocol_fees_paid)/($price_of_one_impact_power * $total_impact_power)
+  const sumOfWeeklyPayments = protocolFeePaymentsPerWeeks.reduce((acc, x) => {
+    return acc + Number(x.totalPayments)
+  }, 0)
+  const priceOfOneImpactPower =
+    data.estimate.amountUSDCNeededNumber /
+    data.estimate.expectedImpactPointsNumber
+  const totalImpactPower = Number(totalImpactPoints)
+
+  const impactMultiplier =
+    sumOfWeeklyPayments / (priceOfOneImpactPower * totalImpactPower)
+
+  const {
+    currentPrice: carbonCreditAuctionPrice,
+    gccForSale: totalGCCForSaleInCarbonCreditAuction,
+    totalGCCSold: totalGCCSoldInCarbonCreditAuction,
+  } = await getCarbonCreditAuctionPrice(client)
+
+  const { multisigUSDCBalance } = await getMultisigStats(client)
   const props = {
     gccPrice,
     gccLiquidity,
@@ -864,7 +985,10 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     earlyLiquidityGlowBalance,
     grantsTreasuryGlowBalance,
     totalStaked,
-    totalSupplyGlowWithoutLockedAmounts,
+    circulatingSupplyGlow,
+    marketCapGlow,
+    vetoCouncilContractBalance,
+    minerPoolAndGcaContractBalance,
     totalSoldInEarlyLiquidity,
     totalRemainingInEarlyLiquidity,
     totalRaisedFromEarlyLiquidity,
@@ -883,6 +1007,11 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     totalUSDC_Value,
     earlyLiquidityPaymentsPerWeeks,
     protocolFeePaymentsPerWeeks,
+    impactMultiplier,
+    carbonCreditAuctionPrice,
+    totalGCCForSaleInCarbonCreditAuction,
+    totalGCCSoldInCarbonCreditAuction,
+    multisigUSDCBalance,
   }
   return {
     props,
@@ -905,7 +1034,10 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
   earlyLiquidityGlowBalance: string
   grantsTreasuryGlowBalance: string
   totalStaked: string
-  totalSupplyGlowWithoutLockedAmounts: string
+  circulatingSupplyGlow: string
+  marketCapGlow: string
+  vetoCouncilContractBalance: string
+  minerPoolAndGcaContractBalance: string
   totalSoldInEarlyLiquidity: string
   currentPriceEarlyLiquidity: string
   totalGlowAmountIn_GLOW_USDGPair: string
@@ -928,4 +1060,9 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     id: string
     totalPayments: string
   }[]
+  impactMultiplier: number
+  carbonCreditAuctionPrice: string
+  totalGCCForSaleInCarbonCreditAuction: string
+  totalGCCSoldInCarbonCreditAuction: string
+  multisigUSDCBalance: string
 }>
