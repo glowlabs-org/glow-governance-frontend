@@ -1,4 +1,4 @@
-import { PublicClient, parseAbi } from 'viem'
+import { PublicClient } from 'viem'
 import { minerPoolAndGCAAbi } from '@/constants/abis/MinerPoolAndGCA.abi'
 import { addresses } from '@/constants/addresses'
 
@@ -42,10 +42,16 @@ export async function getWeeklyRewardsForWeeksMulticall({
   })
 
   const rewards: RewardWithWeekSerialized[] = []
+  let num_errs = 0
   for (let i = 0; i < results.length; i++) {
     const result = results[i]
     if (result.error) {
-      // console.error(result.error)
+      //push a 0
+      rewards.push({
+        amountInBucket: '0',
+        amountToDeduct: '0',
+        weekNumber: weekStart + rewards.length,
+      })
       continue
     }
     const res = result.result! as RewardCallResult

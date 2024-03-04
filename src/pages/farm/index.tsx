@@ -391,11 +391,14 @@ export function MoreInfoButton({
                   </div>
                   <div className="font-bold">USDC Rewards</div>
                   <div>
-                    {(
-                      (rewards!.amountInBucket.toBigInt() *
-                        report.totalGRCRewardsWeight.toBigInt()) /
-                      (merkleTreeQuery.data?.leafUsdcWeight || BigInt(0))
-                    ).toString()}
+                    {(merkleTreeQuery.data?.leafUsdcWeight || BigInt(0)) ===
+                    BigInt(0)
+                      ? '0'
+                      : (
+                          (rewards!.amountInBucket.toBigInt() *
+                            report.totalGRCRewardsWeight.toBigInt()) /
+                          merkleTreeQuery.data?.leafUsdcWeight
+                        ).toString()}
                   </div>
                 </div>
               )

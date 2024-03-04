@@ -15,10 +15,7 @@ import { goerli } from 'wagmi/chains'
 import { publicProvider } from 'wagmi/providers/public'
 import Head from 'next/head'
 
-const { chains, publicClient } = configureChains(
-  [mainnet, goerli],
-  [publicProvider()]
-)
+const { chains, publicClient } = configureChains([mainnet], [publicProvider()])
 const queryClient = new QueryClient({})
 const { connectors } = getDefaultWallets({
   appName: 'My RainbowKit App',

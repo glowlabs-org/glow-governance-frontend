@@ -27,7 +27,7 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     // getServerDataForFarmAndWeights(currentGcaUrl, 7, false),
     // getServerDataForFarmAndWeights(currentGcaUrl, 8, false),
     // getServerDataForFarmAndWeights(currentGcaUrl, 9, false),
-    getServerDataForFarmAndWeights(currentGcaUrl, 10, false),
+    getServerDataForFarmAndWeights(currentGcaUrl, 13, false),
   ])
 
   //ch

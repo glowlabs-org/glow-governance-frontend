@@ -20,8 +20,6 @@ import { useState } from 'react'
 import { formatUnits, parseUnits } from 'viem'
 
 export function BuyNominationsCard() {
-  const { usdc, usdg } = useContracts()
-  const { address } = useAccount()
   const [amount, setAmount] = useState<number>()
   const [amountUSDGNeeded, setAmountUSDGNeeded] = useState<string>()
   type ApiRes = {
