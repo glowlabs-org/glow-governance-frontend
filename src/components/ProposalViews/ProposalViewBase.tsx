@@ -145,7 +145,6 @@ export function SpendNominationsDialogButton(
   props: SpendNominationsDialogButtonProps
 ) {
   const [loading, setLoading] = React.useState(false)
-  const [vetoCouncilLoading, setVetoCouncilLoading] = React.useState(false)
   const [numNominationsToSpend, setNumNominationsToSpend] = React.useState(0)
   const balances = useBalances()
   const { governance } = useContracts()
@@ -320,15 +319,14 @@ export const ProposalViewBase = ({
             {children}
           </div>
 
-          {!data.isMostPopularProposal &&
-            weekStatus({
-              genesis: genesisTimestamp,
-              weekOfMostPopularProposal: parseInt(
-                data.mostPopularProposals[0].id
-              ),
-            }) === 'in-progress' && (
-              <SpendNominationsDialogButton data={data} className="mt-4" />
-            )}
+          {weekStatus({
+            genesis: genesisTimestamp,
+            weekOfMostPopularProposal: parseInt(
+              data.mostPopularProposals[0].id
+            ),
+          }) === 'in-progress' && (
+            <SpendNominationsDialogButton data={data} className="mt-4" />
+          )}
 
           {data.isMostPopularProposal && (
             <Button className="mt-4">
