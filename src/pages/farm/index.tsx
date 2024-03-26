@@ -67,7 +67,7 @@ const weeksArray = Array.from(Array(getProtocolWeek()).keys())
 const Farm = () => {
   const { query } = useRouter()
   const { address: payoutWallet } = useAccount()
-  // const payoutWallet = '0xCB0695C5e231D04a36feb07841e26D44e6D08c9d'
+  // const payoutWallet = '0x4740dC0846985471b2Ad31D4E72B142d7112279b'
   const gcaWalletAddress = '0xB2d687b199ee40e6113CD490455cC81eC325C496'
   // const [queryInfo] = useQueries({
   //   queries: [
@@ -88,7 +88,9 @@ const Farm = () => {
     if (typeof window === 'undefined') return
     if (!minerPoolAndGCA) return
     //@ts-ignore
-    const provider = new ethers.providers.Web3Provider(window?.ethereum)
+    const provider = new ethers.providers.JsonRpcProvider(
+      process.env.NEXT_PUBLIC_PRIVATE_RPC_URL
+    )
     const MulticallProvider = new Provider(provider)
     await MulticallProvider.init()
     const minerPoolMulticallContract = new Contract(
