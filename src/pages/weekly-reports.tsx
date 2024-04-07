@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { GenericTable } from '@/components/GenericTable/GenericTable'
 import { useQueries } from '@tanstack/react-query'
 import { getProtocolWeek } from '@/utils/getProtocolWeek'
@@ -41,19 +41,36 @@ type ChartData = {
   cumSumPerSlot: number
 }
 
-async function getWeeklyReportTableData(url: string, week: number) {
+const dataFilters = ['credits', 'power', 'impact']
+type DataFilter = (typeof dataFilters)[number]
+
+async function getWeeklyReportTableData(
+  url: string,
+  week: number,
+  filteredFarmIds: number[] | null = null,
+  dataType: DataFilter = 'credits'
+) {
   const rewards = 175_000
-  const data = await getWeeklyReportsData(url, week, true)
-  const sortedByCarbonCreditProduction = data.sort(
+  const {
+    filteredFarms,
+    usdgRewardNormalized,
+    allShortIdsForWeek,
+    sumOfCreditsProduced,
+    sumOfGlowWeights,
+  } = await getWeeklyReportsData(url, week, true, filteredFarmIds)
+  const sortedByCarbonCreditProduction = filteredFarms.sort(
     (a, b) => b.carbonCreditsProduced - a.carbonCreditsProduced
   )
-  const sumOfWeeklyPayments = sumOfArray(data.map((row) => row.weeklyPayment))
+
   const values = sortedByCarbonCreditProduction.map((row) => [
-    row.hexlifiedPublicKey,
+    row.shortId.toString(),
     formatNumber(row.powerOutput, 2),
     formatNumber(row.rollingImpactPoints, 0),
     formatNumber(row.carbonCreditsProduced, 4),
-    formatNumber((row.weeklyPayment / sumOfWeeklyPayments) * rewards, 2),
+    formatNumber((row.weeklyPayment / sumOfGlowWeights) * rewards, 2),
+    formatNumber(
+      usdgRewardNormalized * (row.carbonCreditsProduced / sumOfCreditsProduced)
+    ),
   ])
 
   //Next, we need to find the cum-sum of credits produced per slot
@@ -63,18 +80,20 @@ async function getWeeklyReportTableData(url: string, week: number) {
     chartData[i] = {
       timestamp: slotToTimestamp(week, i),
       cumSumPerSlot: sumOfArray(
-        data.map((row) => {
-          return ((row.powerOutputs[i] * row.impactRates[i]) / 1e15) * 2016
+        filteredFarms.map((row) => {
+          if (dataType === 'credits') {
+            return ((row.powerOutputs[i] * row.impactRates[i]) / 1e15) * 2016
+          } else if (dataType === 'power') {
+            return row.powerOutputs[i]
+          } else {
+            return row.impactRates[i]
+          }
         })
       ),
     }
   }
 
-  const sumOfCreditsProduced = sumOfArray(
-    data.map((d) => d.carbonCreditsProduced)
-  )
-
-  return { values, chartData, sumOfCreditsProduced }
+  return { values, chartData, sumOfCreditsProduced, allShortIdsForWeek }
 }
 
 function getAllWeeksForSelect() {
@@ -88,6 +107,8 @@ function getAllWeeksForSelect() {
 
 const WeeklyReport = () => {
   const [selectedWeek, setSelectedWeek] = useState<number>(getProtocolWeek())
+  const [filteredFarm, setFilteredFarm] = useState<number | null>(null)
+  const [dataType, setDataType] = useState<DataFilter>('credits')
 
   const [chartData, setChartData] = useState({
     labels: [] as string[],
@@ -104,8 +125,13 @@ const WeeklyReport = () => {
     queries: [
       {
         queryFn: () =>
-          getWeeklyReportTableData('http://95.217.194.59:35015', selectedWeek),
-        queryKey: ['weeklyReports', selectedWeek],
+          getWeeklyReportTableData(
+            'http://95.217.194.59:35015',
+            selectedWeek,
+            filteredFarm ? [filteredFarm] : null,
+            dataType
+          ),
+        queryKey: ['weeklyReports', selectedWeek, filteredFarm, dataType],
         // @ts-ignore
         onSuccess: ({ chartData }: { chartData: ChartData[] }) => {
           const chartLabels = chartData.map((d) => {
@@ -135,12 +161,22 @@ const WeeklyReport = () => {
     ],
   })
 
+  useEffect(() => {
+    //when the week changes, set the fileterd week to null
+    setFilteredFarm(null)
+  }, [selectedWeek])
+
   const labels = [
-    'Farm',
+    'Farm Short ID',
     'Power Output (Kilowatt Hours)',
     'Impact Rates',
     'Carbon Offset',
-    selectedWeek === getProtocolWeek() ? 'Reward(Estimated)' : 'Rewards',
+    selectedWeek === getProtocolWeek()
+      ? 'Glow Reward(Estimated)'
+      : 'Glow Rewards',
+    selectedWeek === getProtocolWeek()
+      ? 'USDG Reward(Estimated)'
+      : 'USDG Rewards',
   ]
   const tableCaption = `Weekly Report for Week ${selectedWeek}`
 
@@ -175,6 +211,45 @@ const WeeklyReport = () => {
                     <SelectItem value={week.toString()}>Week {week}</SelectItem>
                   ))
                 }
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+
+          <Select
+            onValueChange={(value) => {
+              setFilteredFarm(parseInt(value))
+            }}
+            value={filteredFarm ? filteredFarm.toString() : 'All Farms'}
+          >
+            <SelectTrigger defaultValue={'All'} className="w-[180px] mt-4">
+              <SelectValue placeholder="Filter by Farm" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value={'All Farms'}>All Farms</SelectItem>
+                {weeklyReportsQuery.data?.allShortIdsForWeek.map((shortId) => (
+                  <SelectItem value={shortId.toString()}>
+                    Farm {shortId}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+
+          <Select
+            onValueChange={(value) => {
+              setDataType(value as DataFilter)
+            }}
+            value={dataType}
+          >
+            <SelectTrigger defaultValue={dataType} className="w-[180px] mt-4">
+              <SelectValue placeholder="Data Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {dataFilters.map((filter) => (
+                  <SelectItem value={filter}>{filter}</SelectItem>
+                ))}
               </SelectGroup>
             </SelectContent>
           </Select>

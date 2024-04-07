@@ -67,7 +67,7 @@ const weeksArray = Array.from(Array(getProtocolWeek()).keys())
 const Farm = () => {
   const { query } = useRouter()
   const { address: payoutWallet } = useAccount()
-  // const payoutWallet = '0x4740dC0846985471b2Ad31D4E72B142d7112279b'
+  // const payoutWallet = '0x2e2771032d119fe590FD65061Ad3B366C8e9B7b9'
   const gcaWalletAddress = '0xB2d687b199ee40e6113CD490455cC81eC325C496'
   // const [queryInfo] = useQueries({
   //   queries: [
@@ -136,7 +136,9 @@ const Farm = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Week</TableHead>
-              <TableHead>Already Claimed</TableHead>
+              {/* <TableHead>Glow Rewards</TableHead>
+              <TableHead>USDG Rewards</TableHead> */}
+
               <TableHead>More Information</TableHead>
             </TableRow>
           </TableHeader>
@@ -145,7 +147,13 @@ const Farm = () => {
               return (
                 <TableRow key={index}>
                   <TableCell>{index + 9}</TableCell>
-                  <TableCell>0</TableCell>
+                  {/* <TableCell>
+                    {' '}
+                    {week.reports[0].totalGLWRewardsWeight.toString()}
+                  </TableCell>
+                  <TableCell>
+                    {week.reports[0].totalGRCRewardsWeight.toString()}
+                  </TableCell> */}
                   <TableCell>
                     <MoreInfoButton
                       bucket={week}
@@ -222,9 +230,11 @@ export function MoreInfoButton({
 
   useEffect(() => {
     async function getRewards() {
-      if (!minerPoolAndGCA) return
-      const rewards = await minerPoolAndGCA.reward(bucketNumber)
-      setRewards(rewards)
+      try {
+        if (!minerPoolAndGCA) return
+        const rewards = await minerPoolAndGCA.reward(bucketNumber)
+        setRewards(rewards)
+      } catch (e) {}
     }
     getRewards()
   }, [minerPoolAndGCA])
@@ -328,7 +338,7 @@ export function MoreInfoButton({
     await tx.wait()
   }
 
-  if (!merkleTreeQuery.data || !rewards) return <Button>Not Ready</Button>
+  if (!merkleTreeQuery.data) return <Button>Not Ready</Button>
   //If the weights are 0 in the merkle tree, then the user is not in the merkle tree
   if (
     merkleTreeQuery.data.leafGlowWeight === BigInt(0) &&
@@ -397,8 +407,9 @@ export function MoreInfoButton({
                     BigInt(0)
                       ? '0'
                       : (
-                          (rewards!.amountInBucket.toBigInt() *
-                            report.totalGRCRewardsWeight.toBigInt()) /
+                          (rewards?.amountInBucket.toBigInt() ||
+                            BigInt(0) *
+                              report.totalGRCRewardsWeight.toBigInt()) /
                           merkleTreeQuery.data?.leafUsdcWeight
                         ).toString()}
                   </div>
