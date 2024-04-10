@@ -110,7 +110,7 @@ function getAllWeeksForSelect() {
 const WeeklyReport = () => {
   return (
     <div className="flex items-center justify-center flex-col min-h-[90vh]">
-      <h2 className="sm:text-3xl">
+      <h2 className="sm:text-3xl text-center">
         This page has been migrated to the new dashboard. Click the button below
         to go to the new page.
       </h2>
