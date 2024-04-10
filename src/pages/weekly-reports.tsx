@@ -27,6 +27,8 @@ import {
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
 import { Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -106,6 +108,17 @@ function getAllWeeksForSelect() {
 }
 
 const WeeklyReport = () => {
+  return (
+    <div className="flex items-center justify-center flex-col min-h-[90vh]">
+      <h2 className="sm:text-3xl">
+        This page has been migrated to the new dashboard. Click the button below
+        to go to the new page.
+      </h2>
+      <Button size="lg" className="mt-4">
+        <Link href="https://glow.org/weekly-reports">Go To New Dashboard</Link>
+      </Button>
+    </div>
+  )
   const [selectedWeek, setSelectedWeek] = useState<number>(getProtocolWeek())
   const [filteredFarm, setFilteredFarm] = useState<number | null>(null)
   const [dataType, setDataType] = useState<DataFilter>('credits')
