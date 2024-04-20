@@ -187,6 +187,12 @@ type GetMerkleTreeFromRootSingle = {
   usdcWeight: string
 }
 
+type MerkleTreeApiResponse = {
+  address: string
+  glowWeight: string
+  usdcWeight?: string
+  usdgWeight?: string
+}
 async function getMerkleTreeFromRoot(
   gca: string,
   weekNumber: number,
@@ -195,24 +201,38 @@ async function getMerkleTreeFromRoot(
   bucketCall: BucketCallResult
 ) {
   // const url = `${API_URL}/farm/merkleTree?merkleRoot=${merkleRoot}`
-  const url = `https://glow-merkle-trees.s3.amazonaws.com/${getAddress(
-    gca
-  )}/${weekNumber}/${merkleRoot}.json`
+  // const url = `https://glow-merkle-trees.s3.amazonaws.com/${getAddress(
+  //   gca
+  // )}/${weekNumber}/${merkleRoot}.json`
+  const url = `https://pub-7e0365747f054c9e85051df5f20fa815.r2.dev/week-${weekNumber}%2Fmerkletree.json`
   const res = await fetch(url)
-  const merkleTree = (await res.json()) as GetMerkleTreeFromRootSingle[]
+  const merkleTree = (await res.json()) as MerkleTreeApiResponse[]
+  const cleanedMerkleTree = merkleTree.map((leaf) => {
+    return {
+      address: leaf.address,
+      glowWeight: leaf.glowWeight,
+      usdcWeight: leaf.usdcWeight || leaf.usdgWeight || '0',
+    }
+  })
 
   const leafGlowWeightStr = merkleTree.find(
     (leaf) => leaf.address.toLowerCase() === payoutWallet.toLowerCase()
   )?.glowWeight
-  const leafUsdcWeightStr = merkleTree.find(
+  let leafUsdcWeightStr = merkleTree.find(
     (leaf) => leaf.address.toLowerCase() === payoutWallet.toLowerCase()
   )?.usdcWeight
+
+  if (!leafUsdcWeightStr) {
+    leafUsdcWeightStr = merkleTree.find(
+      (leaf) => leaf.address.toLowerCase() === payoutWallet.toLowerCase()
+    )?.usdgWeight
+  }
 
   const leafGlowWeight = BigInt(leafGlowWeightStr || '0')
   const leafUsdcWeight = BigInt(leafUsdcWeightStr || '0')
   console.log({ leafGlowWeight, leafUsdcWeight })
   return {
-    merkleTree,
+    merkleTree: cleanedMerkleTree,
     leafGlowWeight,
     leafUsdcWeight,
   }
