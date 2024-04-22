@@ -212,7 +212,7 @@ async function getMerkleTreeFromRoot(
   const merkleTree = (await res.json()) as MerkleTreeApiResponse[]
   const cleanedMerkleTree = merkleTree.map((leaf) => {
     return {
-      address: leaf.address,
+      address: leaf.address || leaf.wallet,
       glowWeight: leaf.glowWeight,
       usdcWeight: leaf.usdcWeight || leaf.usdgWeight || '0',
     }
@@ -319,9 +319,10 @@ export function MoreInfoButton({
     )
 
     console.log({ payoutWallet })
-    const leafForPayoutWallet = merkleTreeQuery.data.merkleTree.find(
-      (leaf) => leaf.address!.toLowerCase() == payoutWallet.toLowerCase() /// @0xSimbo Check if this is ok.
+    let leafForPayoutWallet = merkleTreeQuery.data.merkleTree.find(
+      (leaf) => leaf.address?.toLowerCase() == payoutWallet.toLowerCase() /// @0xSimbo Check if this is ok.
     )
+
     const { address, glowWeight, usdcWeight } = leafForPayoutWallet!
 
     const leafType = ['address', 'uint256', 'uint256']
