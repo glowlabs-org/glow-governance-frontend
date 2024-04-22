@@ -30,7 +30,7 @@ import { BigNumber, ethers } from 'ethers'
 import { addresses } from '@/constants/addresses'
 import keccak256 from 'keccak256'
 import MerkleTree from 'merkletreejs'
-import { getAddress, isAddress } from 'viem'
+import { formatUnits, getAddress, isAddress } from 'viem'
 import { Input } from '@/components/ui/input'
 import { useAccount } from 'wagmi'
 import { BucketSubmission } from '@/typechain-types'
@@ -188,7 +188,8 @@ type GetMerkleTreeFromRootSingle = {
 }
 
 type MerkleTreeApiResponse = {
-  address: string
+  address?: string
+  wallet?: string
   glowWeight: string
   usdcWeight?: string
   usdgWeight?: string
@@ -204,7 +205,9 @@ async function getMerkleTreeFromRoot(
   // const url = `https://glow-merkle-trees.s3.amazonaws.com/${getAddress(
   //   gca
   // )}/${weekNumber}/${merkleRoot}.json`
-  const url = `https://pub-7e0365747f054c9e85051df5f20fa815.r2.dev/week-${weekNumber}%2Fmerkletree.json`
+  const url = `https://pub-7e0365747f054c9e85051df5f20fa815.r2.dev/week-${
+    weekNumber - 1
+  }%2Fmerkletree.json`
   const res = await fetch(url)
   const merkleTree = (await res.json()) as MerkleTreeApiResponse[]
   const cleanedMerkleTree = merkleTree.map((leaf) => {
@@ -215,19 +218,38 @@ async function getMerkleTreeFromRoot(
     }
   })
 
-  const leafGlowWeightStr = merkleTree.find(
-    (leaf) => leaf.address.toLowerCase() === payoutWallet.toLowerCase()
+  let leafGlowWeightStr = merkleTree.find(
+    (leaf) => leaf.address?.toLowerCase() === payoutWallet.toLowerCase()
   )?.glowWeight
+
+  if (!leafGlowWeightStr) {
+    leafGlowWeightStr = merkleTree.find(
+      (leaf) => leaf.wallet?.toLowerCase() === payoutWallet.toLowerCase()
+    )?.glowWeight
+  }
+
   let leafUsdcWeightStr = merkleTree.find(
-    (leaf) => leaf.address.toLowerCase() === payoutWallet.toLowerCase()
+    (leaf) => leaf.address?.toLowerCase() === payoutWallet.toLowerCase()
   )?.usdcWeight
 
   if (!leafUsdcWeightStr) {
     leafUsdcWeightStr = merkleTree.find(
-      (leaf) => leaf.address.toLowerCase() === payoutWallet.toLowerCase()
+      (leaf) => leaf.wallet?.toLowerCase() === payoutWallet.toLowerCase()
+    )?.usdcWeight
+  }
+
+  if (!leafUsdcWeightStr) {
+    leafUsdcWeightStr = merkleTree.find(
+      (leaf) => leaf.address?.toLowerCase() === payoutWallet.toLowerCase()
     )?.usdgWeight
   }
 
+  if (!leafUsdcWeightStr) {
+    leafUsdcWeightStr = merkleTree.find(
+      (leaf) => leaf.wallet?.toLowerCase() === payoutWallet.toLowerCase()
+    )?.usdgWeight
+  }
+  //
   const leafGlowWeight = BigInt(leafGlowWeightStr || '0')
   const leafUsdcWeight = BigInt(leafUsdcWeightStr || '0')
   console.log({ leafGlowWeight, leafUsdcWeight })
@@ -298,7 +320,7 @@ export function MoreInfoButton({
 
     console.log({ payoutWallet })
     const leafForPayoutWallet = merkleTreeQuery.data.merkleTree.find(
-      (leaf) => leaf.address.toLowerCase() == payoutWallet.toLowerCase()
+      (leaf) => leaf.address!.toLowerCase() == payoutWallet.toLowerCase() /// @0xSimbo Check if this is ok.
     )
     const { address, glowWeight, usdcWeight } = leafForPayoutWallet!
 
@@ -422,17 +444,25 @@ export function MoreInfoButton({
                     ).toString()}
                   </div>
                   <div className="font-bold">USDC Rewards</div>
-                  <div>
-                    {(merkleTreeQuery.data?.leafUsdcWeight || BigInt(0)) ===
-                    BigInt(0)
-                      ? '0'
-                      : (
-                          (rewards?.amountInBucket.toBigInt() ||
-                            BigInt(0) *
-                              report.totalGRCRewardsWeight.toBigInt()) /
-                          merkleTreeQuery.data?.leafUsdcWeight
-                        ).toString()}
-                  </div>
+                  {(report.totalGRCRewardsWeight.toBigInt() || BigInt(0)) >
+                    BigInt(0) && (
+                    <div>
+                      {(merkleTreeQuery.data?.leafUsdcWeight || BigInt(0)) ===
+                      BigInt(0)
+                        ? '0'
+                        : formatUnits(
+                            ((rewards?.amountInBucket.toBigInt() || BigInt(0)) *
+                              merkleTreeQuery.data?.leafUsdcWeight) /
+                              report.totalGRCRewardsWeight.toBigInt(),
+                            6
+                          ).toString()}
+                    </div>
+                  )}
+                  {`amount in bucket: ${rewards?.amountInBucket.toString()}` +
+                    `\n\n` +
+                    `totalGRCRewardsWeight: ${report.totalGRCRewardsWeight.toString()}` +
+                    `\n\n` +
+                    `leafUsdcWeight: ${merkleTreeQuery.data?.leafUsdcWeight}`}
                 </div>
               )
             })}
