@@ -34,6 +34,7 @@ import { formatUnits, getAddress, isAddress } from 'viem'
 import { Input } from '@/components/ui/input'
 import { useAccount } from 'wagmi'
 import { BucketSubmission } from '@/typechain-types'
+import ClaimUSDGRow from './components/ClaimUSDGRow'
 
 type GetFarmFromApiQueryResponse = {
   id: string
@@ -128,6 +129,10 @@ const Farm = () => {
       <div className="mt-4">
         <div className="font-bold">GCA Wallet Address</div>
         <div>{gcaWalletAddress}</div>
+      </div>
+      <div className="mt-4">
+        <h3 className=" font-bold">USDG Stats</h3>
+        <ClaimUSDGRow />
       </div>
       {!payoutWallet && <Button>Make sure to connect your wallet</Button>}
       {payoutWallet && (
