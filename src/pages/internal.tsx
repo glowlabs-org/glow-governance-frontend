@@ -14,10 +14,11 @@ import { computeTotalRaisedFromEarlyLiquidity } from '@/utils/computeTotalRaised
 import { client } from '@/subgraph/client'
 import { gql } from '@apollo/client'
 import { formatNumber } from '@/utils/formatNumber'
-import { earlyLiquidity } from '@/typechain-types/src/testing'
+import { getWeeklyRewardsForWeeksMulticall } from '@/multicalls/view/getWeeklyRewardsForWeeksMulticall'
 import { GenericTable } from '@/components/GenericTable/GenericTable'
 import { CarbonCreditDescendingPriceAuctionABI } from '@/constants/abis/CarbonCreditDescendingPriceAuction.abi'
 import { getGlowStats } from '@/utils/web3/getGlowStats'
+import { getProtocolWeek } from '@/utils/getProtocolWeek'
 const minimalPairAbi = [
   'function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)',
 ]
@@ -121,11 +122,16 @@ const Internal = ({
   totalGCCForSaleInCarbonCreditAuction,
   totalGCCSoldInCarbonCreditAuction,
   multisigUSDCBalance,
+  sumOfMinerPoolRewardsInCurrentBuckets,
 }: InferGetStaticPropsType<typeof getStaticProps>) => {
   const multisigStats = [
     {
       title: 'Multisig USDC Balance',
       value: formatNumber(multisigUSDCBalance),
+    },
+    {
+      title: 'Total Available Miner Pool Rewards',
+      value: formatNumber(sumOfMinerPoolRewardsInCurrentBuckets),
     },
   ]
   const gccStats = [
@@ -967,6 +973,19 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     totalGCCSold: totalGCCSoldInCarbonCreditAuction,
   } = await getCarbonCreditAuctionPrice(client)
 
+  const currentWeek = getProtocolWeek()
+  const minerPoolRewards = await getWeeklyRewardsForWeeksMulticall({
+    client: client,
+    weekStart: currentWeek,
+    weekEnd: currentWeek + 208,
+  })
+
+  const sumOfMinerPoolRewards = minerPoolRewards.reduce((acc, x) => {
+    return acc + BigInt(x.amountInBucket)
+  }, BigInt(0))
+
+  const formattedSumOfMinerPoolRewards = formatUnits(sumOfMinerPoolRewards, 6)
+
   const { multisigUSDCBalance } = await getMultisigStats(client)
   const props = {
     gccPrice,
@@ -1012,6 +1031,7 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     totalGCCForSaleInCarbonCreditAuction,
     totalGCCSoldInCarbonCreditAuction,
     multisigUSDCBalance,
+    sumOfMinerPoolRewardsInCurrentBuckets: formattedSumOfMinerPoolRewards,
   }
   return {
     props,
@@ -1065,4 +1085,5 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
   totalGCCForSaleInCarbonCreditAuction: string
   totalGCCSoldInCarbonCreditAuction: string
   multisigUSDCBalance: string
+  sumOfMinerPoolRewardsInCurrentBuckets: string
 }>

@@ -67,8 +67,8 @@ async function getFarmFromAPI(
 const weeksArray = Array.from(Array(getProtocolWeek()).keys())
 const Farm = () => {
   const { query } = useRouter()
-  const { address: payoutWallet } = useAccount()
-  // const payoutWallet = '0x2e2771032d119fe590FD65061Ad3B366C8e9B7b9'
+  // const { address: payoutWallet } = useAccount()
+  const payoutWallet = '0x2e2771032d119fe590FD65061Ad3B366C8e9B7b9'
   const gcaWalletAddress = '0xB2d687b199ee40e6113CD490455cC81eC325C496'
   // const [queryInfo] = useQueries({
   //   queries: [
