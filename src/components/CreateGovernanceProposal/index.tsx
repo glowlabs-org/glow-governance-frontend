@@ -55,11 +55,11 @@ const grant = {
   descripton: "A grant proposal let's you grant GLOW to an address.",
 }
 const proposals: SingularProposalProps[] = [
-  // changeGCARequirements,
-  // vetoCouncilElectionOrSlash,
-  // RFC,
+  changeGCARequirements,
+  vetoCouncilElectionOrSlash,
+  RFC,
   grant,
-  // GCAElectionOrSlashProposal,
+  GCAElectionOrSlashProposal,
 ]
 
 export const CreateGovernanceProposal = () => {

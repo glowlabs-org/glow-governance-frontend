@@ -68,7 +68,9 @@ const weeksArray = Array.from(Array(getProtocolWeek()).keys())
 const Farm = () => {
   const { query } = useRouter()
   // const { address: payoutWallet } = useAccount()
-  const payoutWallet = '0x2e2771032d119fe590FD65061Ad3B366C8e9B7b9'
+  const payoutWallet = `0x5c41e36C09c58D0aAACB14DfBaf45AE26ba24a43`
+  // const payoutWallet = '0x2e2771032d1≥≥19fe590FD65061Ad3B366C8e9B7b9'
+  // const payoutWallet = '0x41b2CB3aDd173f17c22b4c6201F0FB68fBeDc16F'
   const gcaWalletAddress = '0xB2d687b199ee40e6113CD490455cC81eC325C496'
   // const [queryInfo] = useQueries({
   //   queries: [

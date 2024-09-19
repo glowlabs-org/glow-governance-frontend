@@ -429,7 +429,7 @@ const Internal = ({
         title="Carbon Credit Auction Stats"
         stats={carbonCreditAuctionStats}
       />
-      <StatSection title="Multisig Stats" stats={multisigStats} />
+      <StatSection title="USDC Stats" stats={multisigStats} />
       <StatSection title="Glow Stats" stats={glowStats} />
       <StatSection title="Early Liquidity Stats" stats={earlyLiquidityStats} />
       <div className="max-w-[95%] mx-auto">

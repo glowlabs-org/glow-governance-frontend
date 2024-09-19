@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 const ClaimUSDGRow = () => {
   const { holdingContract, usdg } = useContracts()
   const { address } = useAccount()
+  // const address = '0x41b2CB3aDd173f17c22b4c6201F0FB68fBeDc16F'
   const [holding, setHolding] = useState<HoldingStructOutput>()
 
   const fetchParams = async () => {
@@ -21,8 +22,10 @@ const ClaimUSDGRow = () => {
 
   const isClaimable = () => {
     if (!holding) return false
+    const currentTimestamp = Math.floor(Date.now() / 1000)
     const isHoldingClaimable =
-      holding.expirationTimestamp.toNumber() > Date.now()
+      holding.expirationTimestamp.toNumber() < currentTimestamp
+    console.log('holding expiration = ', holding.expirationTimestamp.toNumber())
     const isAmountGT0 = holding.amount.gt(BigNumber.from(0))
     return isHoldingClaimable && isAmountGT0
   }
