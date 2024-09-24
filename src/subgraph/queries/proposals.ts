@@ -5,7 +5,7 @@ import { ProposalStatus } from '@/types/ProposalStatus'
 import { findMostPopularProposalIds } from './findMostPopularProposalIds'
 import { GENESIS_TIMESTAMP } from '@/constants/genesis-timestamp'
 import { createPublicClient, http, parseAbi } from 'viem'
-import { mainnet } from 'wagmi'
+import { mainnet } from 'viem/chains'
 import { addresses } from '@/constants/addresses'
 // import viem
 const createQuery = () => {
@@ -194,7 +194,7 @@ async function getAllProposalStatuses(): Promise<GetAllStatusesResponse> {
 
   const statuses: ProposalOnchainStatus[] = multicallResponse.map(
     (response) => {
-      const res: number = response.result as number
+      const res: number = Number(response.result?.toString()) as number
       if (res === 0) {
         return 'NONE'
       }

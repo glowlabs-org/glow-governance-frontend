@@ -1,21 +1,8 @@
-import React, { useEffect } from 'react'
-import { useContracts } from '@/hooks/useContracts'
-import { formatEther, formatUnits, parseUnits } from 'ethers/lib/utils'
-import { BigNumber, ethers } from 'ethers'
-import {
-  DonationsSubgraphResponse,
-  findDonationsFromAddress,
-} from '@/subgraph/queries/findDonationsFromAddress'
-import { useQueries } from '@tanstack/react-query'
-import { Input } from '@/components/ui/input'
+import React from 'react'
+import { formatUnits } from 'ethers/lib/utils'
 import { GetStaticProps, InferGetStaticPropsType } from 'next'
 import { createPublicClient, http, isAddress } from 'viem'
-import { Loader2 } from 'lucide-react'
-import {
-  EarlyLiquidity__factory,
-  USDG__factory,
-  MinerPoolAndGCA__factory,
-} from '@/typechain-types'
+
 import {
   Table,
   TableBody,
@@ -26,13 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { GetStaticPropsContext } from 'next'
-import { addresses } from '@/constants/addresses'
-import {
-  FindAllDonationsSubgraphResponse,
-  findAllDonations,
-} from '@/subgraph/queries/findAllDonations'
-import { getTotalProtocolFeesPaid } from '@/subgraph/queries/getTotalProtocolFeesPaid'
-import { mainnet } from 'wagmi'
+import { mainnet } from 'wagmi/chains'
 import { getProtocolWeek } from '@/utils/getProtocolWeek'
 import {
   RewardWithWeekSerialized,

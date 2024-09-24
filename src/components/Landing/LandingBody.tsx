@@ -7,6 +7,7 @@ const LandingBody = () => {
     nominationBalance,
     usdcBalance,
     usdgBalance,
+    totalImpactPowerEarned,
   } = useBalances()
   const parseFloatToFixed2OrEmptyString = (value: string | number) => {
     const parsed = parseFloat(`${value}`)
@@ -31,6 +32,10 @@ const LandingBody = () => {
       </p>
       <p className="text-4xl text-gray-700">
         {parseFloatToFixed2OrEmptyString(gccBalance)} GCC-BETA
+      </p>
+
+      <p className="text-4xl text-gray-700">
+        {parseFloatToFixed2OrEmptyString(totalImpactPowerEarned)} IMPACT POWER
       </p>
       <p className="text-4xl text-gray-700">
         {parseFloatToFixed2OrEmptyString(nominationBalance)} NOMINATIONS

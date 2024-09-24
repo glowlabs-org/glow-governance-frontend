@@ -3,30 +3,56 @@ import type { AppProps } from 'next/app'
 import { RainbowKitProvider } from '@rainbow-me/rainbowkit'
 import { SessionProvider } from 'next-auth/react'
 import type { Session } from 'next-auth'
-import { WagmiConfig, mainnet } from 'wagmi'
 import Nav from '@/layout/Nav'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BalancesProvider } from '@/contexts/BalanceProvider'
 import React from 'react'
 import '@rainbow-me/rainbowkit/styles.css'
 import { getDefaultWallets } from '@rainbow-me/rainbowkit'
-import { configureChains, createConfig } from 'wagmi'
-import { goerli } from 'wagmi/chains'
-import { publicProvider } from 'wagmi/providers/public'
+import { createConfig, http, WagmiConfig, WagmiProvider } from 'wagmi'
+import { goerli, mainnet } from 'wagmi/chains'
 import Head from 'next/head'
+import { coinbaseWallet, metaMask, walletConnect } from 'wagmi/connectors'
+import { connectorsForWallets } from '@rainbow-me/rainbowkit'
+// import {argentWallet}
 
-const { chains, publicClient } = configureChains([mainnet], [publicProvider()])
-const queryClient = new QueryClient({})
-const { connectors } = getDefaultWallets({
-  appName: 'My RainbowKit App',
+const { wallets } = getDefaultWallets({
+  appName: 'Glow Governance',
   projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_ID || '',
-  chains,
 })
 
-const wagmiConfig = createConfig({
-  autoConnect: true,
-  connectors,
-  publicClient,
+const connectors = connectorsForWallets(
+  [
+    ...wallets,
+    // {
+    //   groupName: 'Other',
+    //   wallets: [
+    //     argentWallet({ projectId, chains }),
+    //     trustWallet({ projectId, chains }),
+    //     ledgerWallet({ projectId, chains }),
+    //   ],
+    // },
+  ],
+  {
+    appName: 'Glow Governance',
+    projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_ID || '',
+  }
+)
+
+const config = createConfig({
+  chains: [mainnet],
+  ssr: true,
+  connectors: connectors,
+  // connectors: [
+  //   walletConnect({
+  //     projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_ID || '',
+  //   }),
+  //   metaMask(),
+  //   coinbaseWallet(),
+  // ],
+  transports: {
+    [mainnet.id]: http(mainnet.rpcUrls.default.http[0]),
+  },
 })
 
 export default function App({
@@ -36,7 +62,7 @@ export default function App({
   session: Session
 }>) {
   const [hasMounted, setHasMounted] = React.useState(false)
-
+  const queryClient = new QueryClient({})
   React.useEffect(() => {
     setHasMounted(true)
   }, [])
@@ -47,25 +73,25 @@ export default function App({
       <Head>
         <title>Glow Governance</title>
       </Head>
-      <WagmiConfig config={wagmiConfig}>
-        <SessionProvider refetchInterval={0} session={pageProps.session}>
-          {/* <RainbowKitSiweNextAuthProvider> */}
-          <div className="bg-white">
-            <div className="bg-[#f3f1e8] w-[93vw] min-h-screen mx-auto rounded-lg my-2">
-              <RainbowKitProvider chains={chains}>
-                <BalancesProvider>
-                  <Nav />
-                  <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <WagmiProvider config={config}>
+          <SessionProvider refetchInterval={0} session={pageProps.session}>
+            {/* <RainbowKitSiweNextAuthProvider> */}
+            <div className="bg-white">
+              <div className="bg-[#f3f1e8] w-[93vw] min-h-screen mx-auto rounded-lg my-2">
+                <RainbowKitProvider>
+                  <BalancesProvider>
+                    <Nav />
                     <Component {...pageProps} />
                     {/* <ReactQueryDevtools initialIsOpen={false} /> */}
-                  </QueryClientProvider>
-                </BalancesProvider>
-              </RainbowKitProvider>
+                  </BalancesProvider>
+                </RainbowKitProvider>
+              </div>
             </div>
-          </div>
-          {/* </RainbowKitSiweNextAuthProvider> */}
-        </SessionProvider>
-      </WagmiConfig>
+            {/* </RainbowKitSiweNextAuthProvider> */}
+          </SessionProvider>
+        </WagmiProvider>
+      </QueryClientProvider>
     </>
   )
 }

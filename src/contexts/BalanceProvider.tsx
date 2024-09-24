@@ -12,6 +12,7 @@ export const BalancesContext = createContext({
   gccBalance: '',
   usdcBalance: '',
   nominationBalance: '',
+  totalImpactPowerEarned: '',
 })
 
 export const BalancesProvider = ({

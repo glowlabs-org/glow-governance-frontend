@@ -33,6 +33,7 @@ export async function getWeeklyRewardsForWeeksMulticall({
     address: addresses.gcaAndMinerPoolContract,
     abi: minerPoolAndGCAAbi,
   }
+  //@ts-ignore
   const results = await client.multicall({
     contracts: Array.from({ length: weekEnd - weekStart + 1 }, (_, i) => ({
       ...contract,

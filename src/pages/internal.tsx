@@ -889,6 +889,8 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     chain: mainnet, //need mainnet import for the multicll
     batch: {
       multicall: {
+        // address: `0xeefba1e63905ef1d7acba5a8513c70307c1ce441` as `0x${string}`,
+
         wait: 100,
       },
     },

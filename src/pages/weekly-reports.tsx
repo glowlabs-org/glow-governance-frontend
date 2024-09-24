@@ -1,20 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { GenericTable } from '@/components/GenericTable/GenericTable'
-import { useQueries } from '@tanstack/react-query'
+import React from 'react'
 import { getProtocolWeek } from '@/utils/getProtocolWeek'
 import { getWeeklyReportsData } from '@/utils/getWeeklyReportsData'
 import { sumOfArray } from '@/utils/sumOfArray'
 import { formatNumber } from '@/utils/formatNumber'
 import { slotToTimestamp } from '@/utils/slotToTimestamp'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -25,8 +14,6 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js'
-import { Line } from 'react-chartjs-2'
-import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 ChartJS.register(
