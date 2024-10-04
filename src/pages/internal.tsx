@@ -19,6 +19,7 @@ import { GenericTable } from '@/components/GenericTable/GenericTable'
 import { CarbonCreditDescendingPriceAuctionABI } from '@/constants/abis/CarbonCreditDescendingPriceAuction.abi'
 import { getGlowStats } from '@/utils/web3/getGlowStats'
 import { getProtocolWeek } from '@/utils/getProtocolWeek'
+import { NEXT_PUBLIC_GCA_API_URL } from '@/constants/api-url'
 const minimalPairAbi = [
   'function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)',
 ]
@@ -123,6 +124,7 @@ const Internal = ({
   totalGCCSoldInCarbonCreditAuction,
   multisigUSDCBalance,
   sumOfMinerPoolRewardsInCurrentBuckets,
+  protocolData,
 }: InferGetStaticPropsType<typeof getStaticProps>) => {
   const multisigStats = [
     {
@@ -422,6 +424,21 @@ const Internal = ({
     },
   ]
 
+  const protocolFeePaymentStats = [
+    {
+      title: 'Last 30 Days',
+      value: formatNumber(protocolData.totalProtocolFeesLast30days),
+    },
+    {
+      title: 'Last 90 Days',
+      value: formatNumber(protocolData.totalProtocolFeesLast90days),
+    },
+    {
+      title: 'Last Year',
+      value: formatNumber(protocolData.totalProtocolFeesLastYear),
+    },
+  ]
+
   return (
     <div>
       <StatSection title="GCC Stats" stats={gccStats} />
@@ -432,6 +449,7 @@ const Internal = ({
       <StatSection title="USDC Stats" stats={multisigStats} />
       <StatSection title="Glow Stats" stats={glowStats} />
       <StatSection title="Early Liquidity Stats" stats={earlyLiquidityStats} />
+      <StatSection title="Protocol Fee Stats" stats={protocolFeePaymentStats} />
       <div className="max-w-[95%] mx-auto">
         <GenericTable
           labels={tabelLables}
@@ -760,6 +778,12 @@ async function getUniswapAggregatesAndTotalImpactPoints() {
     )
   }
 
+  const url = NEXT_PUBLIC_GCA_API_URL + '/headline-stats'
+
+  const protocolData = (await fetch(url).then((res) =>
+    res.json()
+  )) as ProtocolData
+
   return {
     totalGlowAmountIn_GLOW_USDGPair: formatUnits(
       totalGlowAmountIn_GLOW_USDGPair,
@@ -806,6 +830,7 @@ async function getUniswapAggregatesAndTotalImpactPoints() {
       BigInt(data.totalImpactPointsAggregate.totalUSDC_Value),
       6
     ),
+    protocolData,
 
     earlyLiquidityPaymentsPerWeeks: data.earlyLiquidityPaymentsPerWeeks.map(
       (x) => {
@@ -943,6 +968,7 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     totalUSDC_Value,
     earlyLiquidityPaymentsPerWeeks,
     protocolFeePaymentsPerWeeks,
+    protocolData,
   } = await getUniswapAggregatesAndTotalImpactPoints()
 
   const impactPointsUrl =
@@ -1034,6 +1060,7 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     totalGCCSoldInCarbonCreditAuction,
     multisigUSDCBalance,
     sumOfMinerPoolRewardsInCurrentBuckets: formattedSumOfMinerPoolRewards,
+    protocolData,
   }
   return {
     props,
@@ -1083,9 +1110,32 @@ export const getStaticProps = (async (ctx: GetStaticPropsContext) => {
     totalPayments: string
   }[]
   impactMultiplier: number
+  protocolData: ProtocolData
   carbonCreditAuctionPrice: string
   totalGCCForSaleInCarbonCreditAuction: string
   totalGCCSoldInCarbonCreditAuction: string
   multisigUSDCBalance: string
   sumOfMinerPoolRewardsInCurrentBuckets: string
 }>
+
+type ProtocolData = {
+  glowPrice: number
+  uniswapPrice: number
+  earlyLiquidityPrice: number
+  gccPrice: number
+  circulatingSupply: number
+  totalSupply: number
+  gccCirculatingSupply: number
+  marketCap: number
+  usdcRewardPool: string
+  currentWeekActiveFarms: number
+  totalProtocolFeesLast30days: number
+  totalProtocolFeesLast90days: number
+  totalProtocolFeesLastYear: number
+  impactPowerPointsPrice: number
+  allProtocolFees: Array<{
+    revenueToken: string
+    revenueUSD: string
+    date: number
+  }>
+}

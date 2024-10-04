@@ -2,7 +2,7 @@ import * as dotenv from 'dotenv'
 dotenv.config()
 
 const PROD = true
-const NEXT_PUBLIC_GCA_API_URL = PROD
+export const NEXT_PUBLIC_GCA_API_URL = PROD
   ? process.env.NEXT_PUBLIC_GCA_API_URL
   : 'http://0.0.0.0:8787'
 
