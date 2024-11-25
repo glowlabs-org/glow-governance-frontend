@@ -17,7 +17,7 @@ import { connectorsForWallets } from '@rainbow-me/rainbowkit'
 // import {argentWallet}
 
 const config = getDefaultConfig({
-  appName: 'My RainbowKit App',
+  appName: 'Glow Governance',
   projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_ID || '',
   chains: [mainnet],
   ssr: true,
