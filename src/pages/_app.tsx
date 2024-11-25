@@ -1,6 +1,6 @@
 import '@/styles/globals.css'
 import type { AppProps } from 'next/app'
-import { RainbowKitProvider } from '@rainbow-me/rainbowkit'
+import { getDefaultConfig, RainbowKitProvider } from '@rainbow-me/rainbowkit'
 import { SessionProvider } from 'next-auth/react'
 import type { Session } from 'next-auth'
 import Nav from '@/layout/Nav'
@@ -16,43 +16,11 @@ import { coinbaseWallet, metaMask, walletConnect } from 'wagmi/connectors'
 import { connectorsForWallets } from '@rainbow-me/rainbowkit'
 // import {argentWallet}
 
-const { wallets } = getDefaultWallets({
-  appName: 'Glow Governance',
+const config = getDefaultConfig({
+  appName: 'My RainbowKit App',
   projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_ID || '',
-})
-
-const connectors = connectorsForWallets(
-  [
-    ...wallets,
-    // {
-    //   groupName: 'Other',
-    //   wallets: [
-    //     argentWallet({ projectId, chains }),
-    //     trustWallet({ projectId, chains }),
-    //     ledgerWallet({ projectId, chains }),
-    //   ],
-    // },
-  ],
-  {
-    appName: 'Glow Governance',
-    projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_ID || '',
-  }
-)
-
-const config = createConfig({
   chains: [mainnet],
   ssr: true,
-  connectors: connectors,
-  // connectors: [
-  //   walletConnect({
-  //     projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_ID || '',
-  //   }),
-  //   metaMask(),
-  //   coinbaseWallet(),
-  // ],
-  transports: {
-    [mainnet.id]: http(mainnet.rpcUrls.default.http[0]),
-  },
 })
 
 export default function App({
